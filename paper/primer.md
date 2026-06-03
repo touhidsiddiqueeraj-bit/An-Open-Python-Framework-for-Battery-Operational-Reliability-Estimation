@@ -4,17 +4,17 @@
 
 Batteries in power grids need to decide: **should I accept this next service request or not?** Accepting when the battery is about to fail causes blackouts. Rejecting when it would have been fine loses money. Shikdar & Laaksonen (2026) built a machine learning framework that predicts "will this battery fail in the next N cycles?" so operators can reject high-risk jobs. They reported AUC 0.944 on 37 batteries.
 
-**We built an open-source Python implementation** of their complete framework — data loading, hazard modeling, dispatch policies, and market simulation — and performed a synthetic scaling study to answer a practical question: *how many batteries do you actually need?*
+**We built an open-source Python implementation** of their complete framework — data loading, hazard modeling, dispatch policies, and market simulation — and performed an exploratory synthetic scaling study to answer: *how many failure events do you actually need?*
 
 ## What we found
 
-**The scaling study gives a clear answer:**
-- AUC > 0.90 requires at least 3 synthetic cells
-- AUC > 0.95 requires 5–8 synthetic cells  
-- AUC > 0.98 requires 12+ synthetic cells
-- The curve continues to improve beyond N=12 — no clear plateau observed up to N=20 (AUC 0.99)
+**The scaling study (exploratory, synthetic data only) shows:**
+- AUC > 0.90 requires ≥200 failure events (not a specific cell count)
+- AUC rises from 0.84 (N=2) → 0.94 (N=5) → 0.97 (N=8) → 0.99 (N=20)
+- No plateau observed within N=2-20 — the curve continues to improve
+- **These are optimistic upper bounds, not validated guidelines**
 
-All horizons improve consistently with N. Per-horizon breakdown (seed 1):
+Per-horizon breakdown (representative seed):
 
 | N cells | H=10 | H=20 | H=30 | H=50 | Macro |
 |---------|------|------|------|------|-------|
@@ -22,25 +22,26 @@ All horizons improve consistently with N. Per-horizon breakdown (seed 1):
 | 8       | 0.96 | 0.97 | 0.97 | 0.98 | 0.97  |
 | 20      | 0.99 | 0.99 | 0.99 | 0.99 | 0.99  |
 
-**Critical caveat:** Synthetic data maximizes cell diversity at every N by spreading degradation across the full range (slowest to fastest fade). Real-world batteries share chemistry, manufacturer, and operating conditions — correlated degradation reduces effective diversity. Real datasets likely need more cells than the curve suggests.
+**Critical caveat:** The synthetic generator intentionally maximizes cell-to-cell diversity at every N. Real-world batteries share chemistry, manufacturer, and operating conditions — correlated degradation reduces effective diversity. The synthetic data distribution also differs significantly from real NASA data (KS D=0.33, p<0.001; per-feature KL divergence 0.06-0.78 nats). These results do not transfer quantitatively to real datasets.
 
-**Variance note:** For N ≤ 3, leave-battery-out CV has only 2–3 folds, so standard deviation estimates are based on very few observations and should be interpreted cautiously.
+**Event count, not cell count:** Analysis reveals that ≥200 failure events across the dataset is the key requirement, not cell count per se. At N=12 fixed, AUC drops from 0.91 (200 events) to 0.64 (100 events) to 0.10 (2 events).
 
-**Computational cost:** Full scaling study (6 N values × 20 seeds) takes ~4–5 hours on an 8-core CPU. The NASA real-data run completes in under 10 seconds.
+**Censoring intolerance:** Both the discrete-time XGBoost and a continuous-time Random Survival Forest fail above 20% censoring — this is a data-level limitation, not model-specific.
 
-On the real NASA 4-cell dataset, the model achieves AUC 0.50 (exactly random) per-fold. This confirms the framework needs more data than a single public benchmark provides. A synthetic-to-real transfer test (train N=20, test on NASA) produces AUC 0.88 — the model works on real data with sufficient training.
+On the real NASA 4-cell dataset, the model achieves per-fold macro AUC 0.50 (exactly random) — only ~2 EOL events exist across training cells. A synthetic-to-real transfer test (train N=20 synthetic, test NASA) yields AUC 0.88, indicating the synthetic generator captures real-world structure, but this does not validate real-data training.
 
 ## Three methodological corrections
 
 While building the code, we found three mistakes that can inflate reported results:
 
 1. **Calibration leakage (+0.016–0.28 AUC):** Fitting the probability calibrator on test data makes metrics look artificially great. Fix: hold out a separate validation set.
-2. **Unit error (1000×):** Energy is priced in \$/MWh but delivered in kWh. Forgetting to divide by 1000 overstates revenue by 1000×.
+2. **Unit error (1000×):** Energy is priced in \$/MWh but delivered in kWh. Forgetting to divide by 1000 overstates revenue by 1000× ($3.78 per battery across test period, not $3,780).
 3. **Metric mismatch:** Baseline failure rate vs model failure rate must be computed the same way to be comparable.
 
 ## Why this matters
 
-- **Quantitative minimum-data guideline:** The scaling curve gives the community a data-driven answer to "how many batteries?" rather than qualitative estimates.
+- **Event-count-based guidance:** The scaling curve shows that ≥200 failure events (not cell count) drive meaningful discrimination — actionable for practitioners designing aging studies.
+- **Exploratory bounds, not minimum requirements:** The synthetic curve provides optimistic upper bounds. Validated real-data guidelines require a multi-cell real-data scaling study (15+ cells).
 - **Open-source reference implementation:** Fully documented Python package with correct methodology.
 - **Methodological hygiene:** The three bugs are easy to make and hard to catch. Our code provides correct reference implementations.
 
@@ -54,9 +55,10 @@ While building the code, we found three mistakes that can inflate reported resul
 | AUC at N=8 (synthetic) | 0.97 |
 | AUC at N=12+ (synthetic) | > 0.98, continues to 0.99 at N=20 |
 | Real-data per-fold macro AUC | 0.50 (exactly random) |
-| Transfer test (synthetic → real) | Macro AUC 0.88 |
+| Transfer test (synthetic → real) | Macro AUC 0.88 — distributional overlap, NOT validation of real-data training |
 | Negative control (shuffled labels) | AUC 0.53 |
-| Minimum reliable N (synthetic) | ≈ 8–12 cells |
+| Min. failure events for AUC > 0.90 | ≥200 (synthetic) |
+| Censoring tolerance | <10% for both XGBoost and RSF |
 | Original paper AUC | 0.944 (on 37 batteries) |
 
 ## Files in this release
@@ -86,4 +88,4 @@ Run with: `python experiments/run_all.py --expt scaling` (takes ~2 minutes)
 
 ## Bottom line
 
-The Shikdar-Laaksonen framework is sound, but it requires substantial data. Our scaling study provides the first quantitative curve showing exactly how many batteries are needed for reliable risk differentiation. The open-source Python package lets anyone verify this on their own data.
+The Shikdar-Laaksonen framework is sound, but it requires substantial data. Our exploratory scaling study provides the first quantitative curve showing that ≥200 failure events are needed for reliable discrimination, using the generator as an optimistic upper bound. The open-source Python package lets anyone verify and extend this work on their own data.

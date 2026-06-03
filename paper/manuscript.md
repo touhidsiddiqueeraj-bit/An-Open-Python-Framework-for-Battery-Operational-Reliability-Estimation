@@ -89,6 +89,8 @@ The framework is organized into five layers:
 
 `NASALoader` parses NASA PCoE .mat files into normalized DataFrames with columns for capacity, voltage, current, temperature, and derived features (SOH, differentials, moving averages). `CompositeFailureLabeler` supports both single-criterion (SOH < 0.70) and multi-criteria (SOH + sudden capacity drop) failure definitions. `OperationalAugmenter` generates synthetic operational profiles.
 
+Throughout this paper, a **cycle** refers to one complete charge–discharge cycle of the battery. All temporal units (horizons H=10,20,30,50; EOL cycles; scaling analysis N) are expressed in charge–discharge cycles unless otherwise noted.
+
 ### 2.3 Model Layer
 
 `XGBoostHazard` trains one `xgboost.XGBClassifier` per prediction horizon using early stopping (patience=20). The model operates on a **discrete-time representation**: each cycle is a row with cycle-level features (SOH, voltage_avg, current_avg, temperature_avg, cycle number) plus derived deltas (d_SOH, d_capacity). These features vary across cycles within each cell, so the model naturally captures time-varying covariate effects. While the framework uses standard `binary:logistic` classification per horizon rather than a custom survival likelihood (e.g., Cox or AFT loss), this approach produces well-calibrated hazard probability estimates when combined with isotonic regression, as demonstrated by the scaling study in §5.2. The model is trained on 80% of each training fold; the remaining 20% is held out for early stopping and calibrator fitting.
@@ -164,7 +166,16 @@ Temperature shows the largest divergence (KL=0.78, W=7.31), reflecting the synth
 
 **Negative control:** To verify the model does not exploit spurious patterns in the synthetic data, we run a label-shuffling test: the failure labels are randomly permuted (breaking all feature–label relationships), and the pipeline is re-run. The resulting macro-averaged AUC is 0.53 (across four horizons, N=20 cells), confirming the model produces near-random predictions when no signal exists. This rules out the concern that the high synthetic AUC (0.98+) is an artifact of the optimizer finding coincidental correlations.
 
----
+> **Known limitations of the synthetic data generator**
+>
+> The generator (§4.1–4.2) produces clean, diversity-maximized degradation trajectories that differ from real data in several important ways:
+> - **No capacity regeneration**: Real batteries exhibit temporary capacity recovery during rest periods (not modeled).
+> - **No calendar aging**: All degradation is cycle-driven; real batteries also age over time (not modeled).
+> - **No measurement artifacts**: Sensor noise, missing cycles, and irregular sampling are absent.
+> - **Maximum diversity at every N**: Degradation parameters are spread across the full range even at N=2. Real-world cells from the same batch share chemistry, manufacturer, and operating conditions — correlated degradation reduces effective diversity.
+> - **Statistical gap confirmed**: The synthetic distributions differ significantly from real NASA data (KS D=0.33, p<0.001; per-feature KL 0.06–0.78 nats).
+>
+> These limitations mean the scaling curve represents an **optimistic upper bound** on achievable performance. Real-world deployment likely requires more cells or failure events than the synthetic curve suggests. The exact multiplier is application-dependent and cannot be estimated from synthetic data alone.
 
 ## 5 Empirical Validation
 
@@ -459,9 +470,16 @@ We have conducted a reproducibility and scaling study of the Shikdar–Laaksonen
 **Remaining as assumptions for future work:**
 - The real-world event count requirement is unknown and cannot be estimated from synthetic data alone. The curve continues to improve up to N=20 (AUC 0.986), and likely further; N≈50+ (or ≥200 failure events) may be needed for equivalent real-data performance.
 - The scaling curve has not been validated on any multi-cell real dataset with diverse degradation. Validated minimum-data guidelines require a real-data scaling study with ≥15 cells.
-- Baseline comparisons against standard survival models (Weibull, Random Survival Forest, Cox PH) have not been performed beyond the censoring experiment in §5.2.3 (which found both XGBoost and RSF fail above 20% censoring at the data level). It is possible that simpler methods achieve comparable or superior AUC on uncensored synthetic data, which would reduce the practical value of the multihorizon hazard learning approach. Until comprehensive benchmarks across all experimental conditions are completed, the framework's performance should be interpreted relative to its own scaling curve only, not against potential alternative methods. Future work should include these baselines to contextualize the framework's discriminative performance versus computational cost.
+- Baseline comparisons against standard survival models (Weibull, Random Survival Forest, Cox PH) have not been performed beyond the censoring experiment in §5.2.3 (which found both XGBoost and RSF fail above 20% censoring at the data level). We attempted a CoxPH per-cell baseline (§5.2) but per-cell aggregated features do not carry the temporal information needed for per-cycle AUC evaluation — all horizons return NaN. The only valid per-cycle continuous-time comparison (RSF in §5.2.3) gave RSF AUC 0.73 vs XGBoost AUC 0.98 at 0% censoring, suggesting the per-horizon discrete-time format provides richer discriminative signal than a single time-to-event target. However, this does not rule out the possibility that a simpler method with properly designed feature representation could match XGBoost's performance at lower computational cost. Comprehensive benchmarks across all experimental conditions are needed.
 
 Future work should extend the real-data validation to larger, multi-chemistry datasets (15+ cells) to evaluate whether the synthetic scaling curve's regime boundaries generalize, and should assess the deep learning model variants that could not be tested in this CPU-constrained environment.
+
+**Practical guidance (synthetic-data-based, unvalidated on real data):**
+- *Use this framework if:* You have a dataset with ≥200 observed failure events and <10% censoring, and you need multi-horizon probability estimates for operational dispatch decisions.
+- *Consider a simpler alternative (e.g., Weibull AFT) if:* You only need a single time-to-failure prediction per cell. Simpler parametric models may match the framework's discriminative performance at lower computational cost. This remains a key unvalidated assumption (see baseline limitations above).
+- *Avoid this framework if:* Your dataset has >20% censoring. Both the discrete-time XGBoost and a continuous-time Random Survival Forest fail above this threshold on synthetic data (a data-level limitation, not model-specific).
+- *Interpret synthetic scaling curves as optimistic bounds:* The generator produces cleaner, more diverse trajectories than real data. Guidelines derived from synthetic data represent upper bounds on performance, not minimum requirements for real deployment.
+- *Use event count, not cell count, to assess data adequacy:* ≥200 failure events is a more informative criterion than cell count alone.
 
 ---
 

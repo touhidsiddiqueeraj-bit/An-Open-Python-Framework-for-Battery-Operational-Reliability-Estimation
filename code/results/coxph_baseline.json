@@ -1,0 +1,19 @@
+{
+  "xgb": {
+    "N=2": {"mean": 0.8452, "std": 0.0095},
+    "N=3": {"mean": 0.9552, "std": 0.0075},
+    "N=5": {"mean": 0.9761, "std": 0.0083},
+    "N=8": {"mean": 0.9815, "std": 0.0041},
+    "N=12": {"mean": 0.9838, "std": 0.0038},
+    "N=20": {"mean": 0.9852, "std": 0.0031}
+  },
+  "coxph": {
+    "N=2": {"mean": null, "std": null},
+    "N=3": {"mean": null, "std": null},
+    "N=5": {"mean": null, "std": null},
+    "N=8": {"mean": null, "std": null},
+    "N=12": {"mean": null, "std": null},
+    "N=20": {"mean": null, "std": null}
+  },
+  "interpretation": "CoxPH with per-cell aggregated features cannot produce per-cycle AUC estimates — the per-cell format discards temporal information within each cell. A meaningful comparison requires per-cycle survival formats (see RSF per-cycle comparison in §5.2.3)."
+}

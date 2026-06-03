@@ -40,7 +40,6 @@
   .nav span { color: #64748b; line-height: 2em; }
   .tag { display: inline-block; background: #1e3a5f; color: #60a5fa;
     padding: 2px 10px; border-radius: 10px; font-size: 0.8em; margin-right: 6px; }
-  img { max-width: 100%; border-radius: 8px; margin: 10px 0; }
   .footer { margin-top: auto; color: #475569; font-size: 0.85em; text-align: center; padding-top: 20px; }
   @media (max-width: 768px) {
     .slide { padding: 30px 20px; }
@@ -60,11 +59,11 @@
 <!-- SLIDE 1: Title -->
 <div class="slide" data-slide="0">
    <h1>An Open Python Framework for Battery Operational Reliability Estimation</h1>
-  <p style="font-size:1.3em; color:#94a3b8; margin-bottom:1em;">With Quantitative Minimum-Data Guidelines from a Synthetic Scaling Study</p>
+  <p style="font-size:1.3em; color:#94a3b8; margin-bottom:1em;">With an Exploratory Synthetic Scaling Study</p>
   <p style="margin-bottom:2em;"><span class="tag">Open Source</span><span class="tag">Battery ML</span><span class="tag">Scaling Study</span></p>
   <div class="grid2">
     <div class="stat">
-      <div class="num">2–50</div>
+      <div class="num">2–20</div>
       <div class="label">Synthetic cells studied</div>
     </div>
     <div class="stat">
@@ -72,8 +71,8 @@
       <div class="label">AUC at N=8 cells</div>
     </div>
     <div class="stat">
-      <div class="num">0.46</div>
-      <div class="label">Real-data AUC (NASA)</div>
+      <div class="num">0.50</div>
+      <div class="label">Real-data AUC (NASA, per-fold)</div>
     </div>
     <div class="stat">
       <div class="num">3</div>
@@ -127,7 +126,7 @@
       <p style="font-weight:600;">Key limitation:</p>
       <p>Only <span class="highlight">64 cycles</span> fall below the EOL threshold (SOH &lt; 0.70).</p>
       <p>Of those, <span class="highlight">62 come from a single cell</span> (B0006).</p>
-      <p>Leave-battery-out CV trains on 3 cells, tests on 1. With only 1 failing cell, most folds see zero or one class.</p>
+      <p>Across all 4 cells, only <strong>~2 EOL events</strong> exist within any horizon. Leave-battery-out CV trains on 3 cells, tests on 1. With only 1 failing cell, most folds see zero or one class.</p>
     </div>
   </div>
 </div>
@@ -137,38 +136,35 @@
   <h2>Results: The Framework Needs More Data</h2>
   <div class="table-wrap">
   <table>
-    <tr><th>Horizon</th><th>Raw AUC</th><th>Calibrated AUC</th><th>Per-fold (mean&plusmn;std)</th></tr>
-    <tr><td>H=10</td><td>0.26</td><td class="bad">0.50</td><td>&mdash; (2/4 folds NaN)</td></tr>
-    <tr><td>H=20</td><td>0.26</td><td class="bad">0.50</td><td>&mdash; (2/4 folds NaN)</td></tr>
-    <tr><td>H=30</td><td>0.60</td><td class="bad">0.50</td><td class="bad">0.50&plusmn;0.00</td></tr>
-    <tr><td>H=50</td><td>0.69</td><td class="bad">0.50</td><td class="bad">0.50&plusmn;0.00</td></tr>
-    <tr style="font-weight:600;"><td>Macro avg</td><td>0.46</td><td class="bad">0.50</td><td class="bad">0.50&plusmn;0.00</td></tr>
+    <tr><th>Horizon</th><th>Raw AUC</th><th>Calibrated AUC</th><th>Per-fold macro AUC</th></tr>
+    <tr><td>H=10</td><td>0.26</td><td class="bad">0.50</td><td class="bad">NaN (2/4 folds single-class)</td></tr>
+    <tr><td>H=20</td><td>0.26</td><td class="bad">0.50</td><td class="bad">NaN (2/4 folds single-class)</td></tr>
+    <tr><td>H=30</td><td>0.60</td><td class="bad">0.50</td><td class="bad">0.50</td></tr>
+    <tr><td>H=50</td><td>0.69</td><td class="bad">0.50</td><td class="bad">0.50</td></tr>
+    <tr style="font-weight:600;"><td>Macro avg</td><td>0.46</td><td class="bad">0.50</td><td class="bad">0.50 (exactly random)</td></tr>
   </table>
   </div>
-  <p style="margin-top:0.8em;"><span class="bad">Random guessing = AUC 0.50.</span> Our model is essentially random. The raw model produces near-constant predictions across cycles, so isotonic regression has no rank order to preserve — AUC is undefined by sklearn and conventionally reported as 0.5.</p>
-  <p>The original paper achieved <strong>AUC 0.944</strong> on 37 batteries — the framework works, but needs substantial data.</p>
+  <p style="margin-top:0.8em;"><span class="bad">AUC = 0.50 is exactly random.</span> The model produces near-constant predictions across cycles because only ~2 failure events exist across training cells. Calibration preserves rank order — constant input → constant output → AUC 0.50.</p>
+  <p style="margin-top:0.5em;">A synthetic-to-real <strong>transfer test</strong> (train N=20 synthetic, test NASA) yields AUC <span class="highlight">0.88</span> (95% CI: [0.860, 0.900]), indicating the synthetic generator captures real-world structure. <strong>This does NOT validate real-data training</strong> — it is a distributional similarity check.</p>
 </div>
 
 <!-- SLIDE 6: Scaling Study (the money plot) -->
 <div class="slide" data-slide="5">
   <h2>Synthetic Scaling Study: AUC vs Dataset Size</h2>
-  <p style="margin-bottom:0.8em;">For N &isin; {2, 3, 5, 8, 12, 20, 30, 50} with 3 Monte Carlo seeds each:</p>
+  <p style="margin-bottom:0.8em;">For N &isin; {2, 3, 5, 8, 12, 20} with 20 Monte Carlo seeds each:</p>
   <div class="table-wrap">
   <table>
-    <tr><th>N cells</th><th>Mean AUC</th><th>&plusmn;1 Std</th><th>Regime</th></tr>
-    <tr><td>2</td><td>0.84</td><td>0.009</td><td class="bad">Insufficient</td></tr>
-    <tr><td>3</td><td>0.90</td><td>0.019</td><td class="bad">Insufficient</td></tr>
-    <tr><td>5</td><td>0.93</td><td>0.007</td><td class="bad">Insufficient</td></tr>
-    <tr><td>8</td><td>0.97</td><td>0.002</td><td class="good">Marginal</td></tr>
-    <tr><td>12</td><td>0.98</td><td>0.002</td><td class="good">Reliable</td></tr>
-    <tr><td>20</td><td>0.99</td><td>0.001</td><td class="good">Reliable</td></tr>
-    <tr><td>30</td><td>0.99</td><td>0.001</td><td class="good">Reliable</td></tr>
-    <tr><td>50</td><td>0.99</td><td>0.001</td><td class="good">Reliable</td></tr>
+    <tr><th>N cells</th><th>Mean AUC</th><th>&plusmn;1 Std</th><th>Regime (synthetic only)</th></tr>
+    <tr><td>2</td><td>0.84</td><td>0.009</td><td class="bad">Low N</td></tr>
+    <tr><td>3</td><td>0.89</td><td>0.012</td><td class="bad">Low N</td></tr>
+    <tr><td>5</td><td>0.94</td><td>0.009</td><td class="bad">Low N</td></tr>
+    <tr><td>8</td><td>0.97</td><td>0.002</td><td class="good">Moderate N</td></tr>
+    <tr><td>12</td><td>0.98</td><td>0.001</td><td class="good">Moderate N</td></tr>
+    <tr><td>20</td><td>0.99</td><td>0.001</td><td class="good">Moderate N (no plateau)</td></tr>
   </table>
   </div>
-  <p style="margin-top:0.8em;"><span class="highlight">Diminishing returns beyond N=8–12.</span> On clean synthetic data, AUC plateaus at &gt;0.98 for N &ge; 12. Real-world data will need more cells (estimated 15–25 for AUC &gt; 0.95).</p>
-  <p style="font-size:0.9em; color:#94a3b8;">Insufficient (N &le; 5): AUC &lt; 0.95, high variance &bull; Marginal (5 &lt; N &lt; 12): AUC 0.95–0.98 &bull; Reliable (N &ge; 12): AUC &gt; 0.98, low variance</p>
-  <p style="margin-top:0.5em; font-size:0.95em;"><span class="highlight">Per-horizon breakdown (representative seed):</span></p>
+  <p style="margin-top:0.8em;">Curve continues to improve — <span class="highlight">no plateau observed within N=2-20</span>. These are <strong>optimistic bounds</strong> on synthetic data, not validated real-data requirements.</p>
+  <p style="font-size:0.95em;"><span class="highlight">Per-horizon breakdown (representative seed):</span></p>
   <div class="table-wrap">
   <table>
     <tr><th>N cells</th><th>H=10</th><th>H=20</th><th>H=30</th><th>H=50</th><th>Macro</th></tr>
@@ -177,28 +173,29 @@
     <tr><td>20</td><td>0.99</td><td>0.99</td><td>0.99</td><td>0.99</td><td>0.99</td></tr>
   </table>
   </div>
-  <p style="margin-top:0.5em; font-size:0.95em;">All horizons improve consistently with N; no single horizon lags behind.</p>
+  <p style="margin-top:0.5em; font-size:0.95em;">All horizons improve consistently with N.</p>
   <div style="background:#1e293b; padding:15px; border-radius:12px; margin-top:10px; border-left:4px solid #fbbf24;">
-  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Diversity caveat:</strong> Synthetic data maximizes cell diversity at every N. Real batteries share chemistry, manufacturer, and operating conditions — correlated degradation reduces effective diversity. Real datasets need more cells than the curve suggests.</p>
-  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Variance note:</strong> Variance estimates for N &le; 3 are based on 2–3 CV folds — interpret cautiously.</p>
-  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Comput. cost:</strong> Full scaling study (8 N &times; 3 seeds) takes ~2–3 h on 8-core CPU. NASA real-data run: &lt; 10 s.</p>
+  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Key finding: event count, not cell count</strong> With N=12 fixed, AUC drops from 0.91 (200 events) to 0.64 (100 events) to 0.10 (2 events).</p>
+  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Diversity caveat:</strong> Synthetic data maximizes cell diversity at every N. Real batteries share conditions — correlated degradation reduces effective diversity.</p>
+  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Censoring intolerance:</strong> Both XGBoost and RSF fail above 20% censoring — a data-level limitation, not model-specific.</p>
+  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Baseline gap:</strong> No comprehensive comparison to Weibull, Cox, or RSF. Simpler methods may match XGBoost.</p>
   </div>
 </div>
 
-<!-- SLIDE 7: Three Code Bugs -->
+<!-- SLIDE 7: Three Methodological Corrections -->
 <div class="slide" data-slide="6">
   <h2>Three Hidden Bugs We Found</h2>
   <div style="background:#1e293b; padding:20px; border-radius:12px; margin:15px 0; border-left:4px solid #f87171;">
     <h3 style="color:#f87171;">Bug 1: Calibration Data Leakage</h3>
-    <p>Original code fit the isotonic calibrator on <strong>test data</strong> — then evaluated on the same data. This inflated AUC from 0.46 to an apparent 0.74. Fix: fit on a held-out validation fold.</p>
+    <p>Fitting the isotonic calibrator on <strong>test data</strong> inflated AUC from an honest 0.50 to an apparent 0.74. Fix: fit on a held-out validation fold. Demonstrated on working model: +0.016 inflation persists even at high AUC.</p>
   </div>
   <div style="background:#1e293b; padding:20px; border-radius:12px; margin:15px 0; border-left:4px solid #f87171;">
     <h3 style="color:#f87171;">Bug 2: Energy Unit Confusion</h3>
-    <p>Revenue = energy (kWh) &times; price ($/MWh) — without dividing by 1000, revenue was overstated by <strong>1000&times;</strong> ($3,780 vs $3.78).</p>
+    <p>Revenue = energy (kWh) &times; price ($/MWh) — without dividing by 1000, revenue was overstated by <strong>1000&times;</strong> ($3,780 vs $3.78 per battery across test period).</p>
   </div>
   <div style="background:#1e293b; padding:20px; border-radius:12px; margin:15px 0; border-left:4px solid #f87171;">
     <h3 style="color:#f87171;">Bug 3: Inconsistent Baseline Metric</h3>
-    <p>Baseline failure rate used label density across all horizons; model rows used conditional dispatch-based metric. Incomparable.</p>
+    <p>Baseline failure rate used label density across all horizons; model rows used conditional dispatch-based metric. Incomparable. Corrected to same conditional metric.</p>
   </div>
 </div>
 
@@ -214,23 +211,23 @@
     <tr><td>+ Composite failure labels</td><td class="bad">0.0110</td><td>318.0</td></tr>
   </table>
   </div>
-  <p style="margin-top:1em;">Adding composite labels <span class="bad">increases</span> the failure rate — the NASA dataset lacks resistance measurements, so composite labels add noise without signal.</p>
+  <p style="margin-top:1em;">All configurations produce identical outcomes because the model probabilities lack contrast — only 64 cycles (all from B0006) fall below the SOH threshold. The 4-cell dataset cannot differentiate dispatch policies.</p>
 </div>
 
 <!-- SLIDE 9: What It Means -->
 <div class="slide" data-slide="8">
   <h2>Takeaways</h2>
   <div style="background:#1e3a5f; border-radius:12px; padding:25px; margin:15px 0;">
-    <h3 style="color:#60a5fa;">First quantitative scaling curve for battery ML</h3>
-    <p>AUC vs N curve: N &le; 5 = insufficient (AUC &lt; 0.95), 5 &lt; N &lt; 12 = marginal, N &ge; 12 = reliable (AUC &gt; 0.98). Real data estimated at 15&ndash;25+ cells for AUC &gt; 0.95.</p>
+    <h3 style="color:#60a5fa;">Exploratory scaling curve (synthetic, optimistic bound)</h3>
+    <p>AUC vs N curve: N &le; 5 = low (AUC &lt; 0.95), N = 8-12 = moderate (AUC 0.97-0.98), N &ge; 12 = high (AUC &gt; 0.98, no plateau). Key insight: <strong>≥200 failure events</strong> drive discrimination, not cell count alone. Real-data requirements are unknown.</p>
   </div>
   <div style="background:#1e3a5f; border-radius:12px; padding:25px; margin:15px 0;">
-    <h3 style="color:#60a5fa;">Open-source framework with correct methodology</h3>
-    <p>Three bugs documented and fixed: calibration leakage (+0.28 AUC inflation), energy unit error (1000&times;), inconsistent baselines. All code is public.</p>
+    <h3 style="color:#60a5fa;">Open-source framework with honest reporting</h3>
+    <p>Three bugs documented and fixed: calibration leakage (inflated AUC 0.50→0.74), energy unit error (1000&times;), inconsistent baselines. On NASA 4-cell: per-fold AUC = 0.50 (exactly random). All code is public.</p>
   </div>
   <div style="background:#1e3a5f; border-radius:12px; padding:25px; margin:15px 0;">
-    <h3 style="color:#60a5fa;">Honest real-data validation</h3>
-    <p>On 4 NASA cells, AUC = 0.46 — confirming the framework needs more data than a single public benchmark. Reproducible for any researcher to verify.</p>
+    <h3 style="color:#60a5fa;">Clear limitations stated</h3>
+    <p>No baseline comparisons (Weibull, Cox, RSF). No real-data validation beyond 4 cells. Censoring intolerant above 20%. Synthetic-to-real gap confirmed (KS D=0.33). Transfer test does not validate real deployment.</p>
   </div>
 </div>
 
@@ -243,10 +240,11 @@
     <li><strong>Unit-aware economics</strong> — correct kWh &harr; $/MWh conversion</li>
     <li><strong>Consistent metrics</strong> — same dispatch-based metric for all ablation rows</li>
     <li><strong>Synthetic data fallback</strong> — pipeline runs without external files</li>
-    <li><strong>Scaling experiment</strong> — <code>--expt scaling</code> runs N=2..50 Monte Carlo study</li>
+    <li><strong>Scaling experiment</strong> — <code>--expt scaling</code> runs N=2..20 Monte Carlo study (20 seeds)</li>
+    <li><strong>Negative controls</strong> — label shuffling (AUC 0.53) and random data (AUC ~0.50)</li>
     <li><strong>Full configuration</strong> — single <code>config.yaml</code> controls everything</li>
   </ul>
-  <p style="margin-top:1.5em;">Code: <code style="background:#1e293b; padding:4px 10px; border-radius:4px;">https://github.com/teamdynamic/battery-reliability-extension</code></p>
+  <p style="margin-top:1.5em;">Code: <code style="background:#1e293b; padding:4px 10px; border-radius:4px;">https://github.com/touhidsiddiqueeraj-bit/An-Open-Python-Framework-for-Battery-Operational-Reliability-Estimation</code></p>
   <p>DOI: <code style="background:#1e293b; padding:4px 10px; border-radius:4px;">10.5281/zenodo.20532600</code></p>
 </div>
 
@@ -255,16 +253,19 @@
   <h2>Limitations &amp; Future Work</h2>
   <h3>Current limitations</h3>
   <ul>
-    <li>Only 4 cells, all 18,650 format under lab conditions</li>
+    <li>NASA validation limited to 4 cells (all 18,650 format, lab conditions)</li>
+    <li>No baseline comparisons against Weibull, Cox, or RSF on scaling experiment</li>
+    <li>Censoring intolerant above 20% (both XGBoost and RSF)</li>
     <li>No deep learning (LSTM, TCN, Transformer) — CPU-only constraints</li>
-    <li>Simplified AR(1) price model</li>
-    <li>CALCE cross-chemistry evaluation incomplete</li>
+    <li>Synthetic distribution differs from real (KS D=0.33, p<0.001)</li>
+    <li>Transfer test: distributional similarity check, NOT real-data validation</li>
   </ul>
   <h3 style="margin-top:1em;">Future work</h3>
   <ul>
-    <li>Validate scaling curve on real multi-cell datasets</li>
+    <li>Validate scaling curve on real multi-cell datasets (15+ cells)</li>
+    <li>Add baseline benchmarks (Weibull, Cox PH, RSF) for scaling comparison</li>
     <li>Add cross-chemistry validation (LFP, NMC chemistries)</li>
-    <li>GPU-based deep learning benchmarks</li>
+    <li>GPU-based deep learning comparisons</li>
     <li>Real price data instead of AR(1) simulation</li>
   </ul>
 </div>
@@ -274,7 +275,7 @@
   <h1 style="margin-bottom:0.5em;">Thank You</h1>
   <p style="font-size:1.3em; color:#94a3b8;">Questions? Feedback?</p>
   <p style="margin-top:2em;">Paper: <code style="background:#1e293b; padding:4px 10px; border-radius:4px;">Extension_Paper.docx</code></p>
-  <p>Code: <code style="background:#1e293b; padding:4px 10px; border-radius:4px;">github.com/teamdynamic/battery-reliability-extension</code></p>
+  <p>Code: <code style="background:#1e293b; padding:4px 10px; border-radius:4px;">github.com/touhidsiddiqueeraj-bit/An-Open-Python-Framework-for-Battery-Operational-Reliability-Estimation</code></p>
   <p style="margin-top:2em; color:#64748b; font-size:0.9em;">Team Dynamic &bull; June 2026</p>
 </div>
 
@@ -291,7 +292,6 @@ function changeSlide(d) {
   currentSlide = Math.max(0, Math.min(slides.length-1, currentSlide + d));
   showSlide(currentSlide);
 }
-// Keyboard navigation
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
     e.preventDefault(); changeSlide(1);

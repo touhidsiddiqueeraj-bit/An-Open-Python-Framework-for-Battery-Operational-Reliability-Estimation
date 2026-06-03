@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: "An Open Python Framework for Battery Operational Reliability Estimation"
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Siddiqee"
+    given-names: "Hussain Touhid"
+    orcid: https://orcid.org/0009-0008-9301-3875
+repository-code: https://github.com/touhidsiddiqueeraj-bit/An-Open-Python-Framework-for-Battery-Operational-Reliability-Estimation
+doi: 10.5281/zenodo.20532600
+date-released: 2026-06-04
+license: MIT
+keywords:
+  - battery reliability
+  - discrete-time hazard
+  - survival analysis
+  - open-source
+  - reproducibility
