@@ -138,6 +138,8 @@ The synthetic data degrades approximately 1.7× faster on average, and the KS te
 
 The generator also lacks capacity regeneration effects, calendar aging, and measurement artifacts present in real data, contributing additional sources of optimistic bias. Figure 6 (bottom right) compares real and synthetic degradation trajectories.
 
+**Negative control:** To verify the model does not exploit spurious patterns in the synthetic data, we run a label-shuffling test: the failure labels are randomly permuted (breaking all feature–label relationships), and the pipeline is re-run. The resulting macro-averaged AUC is 0.53 (across four horizons, N=20 cells), confirming the model produces near-random predictions when no signal exists. This rules out the concern that the high synthetic AUC (0.98+) is an artifact of the optimizer finding coincidental correlations.
+
 ---
 
 ## 5 Empirical Validation
@@ -218,14 +220,14 @@ All horizons improve consistently with N; no single horizon lags systematically.
 
 1. **Rapid initial improvement:** AUC rises from 0.84 (N=2) to 0.94 (N=5) to 0.97 (N=8). Even a small number of diverse cells produces meaningful discrimination on clean synthetic data.
 
-2. **Diminishing returns above N=12:** The curve plateaus at AUC > 0.98 for N ≥ 12. Each additional cell beyond 12 provides marginal gains.
+2. **No clear plateau:** AUC continues to improve from 0.980 (N=12) to 0.986 (N=20). The trend suggests further gains beyond N=20, with no saturation observed. For real-world data with measurement noise and correlated degradation, substantially more cells (likely N≥50) would be needed to match the synthetic curve's AUC.
 
 3. **Low variance at scale:** Bootstrap CIs narrow from ±0.003 (N=2) to ±0.0005 (N≥8), and inter-seed standard deviation drops from 0.012 (N=3) to 0.001 (N≥12), indicating stable reproducible results.
 
 4. **Regime classification:** We identify three regimes:
    - **Insufficient (N ≤ 5):** AUC < 0.95, wider CIs (e.g., N=2 CI width 0.006). Model cannot reliably distinguish failing from non-failing cycles.
    - **Marginal (5 < N < 12):** AUC 0.95–0.98, narrowing CIs. Useful discrimination but results depend on specific cell composition.
-    - **Reliable (N ≥ 12):** AUC > 0.98, narrow CIs. Consistent, high-quality risk differentiation.
+    - **Reliable (N ≥ 12):** AUC > 0.98, narrow CIs. Consistent, high-quality risk differentiation on clean synthetic data.
 
 **Overfitting test:** To verify the model does not overfit on synthetic data, we split N=20 synthetic data into train/validation/test (60/20/20). The macro-averaged test AUC is 0.9923 versus train AUC 0.9979, a gap of 0.0056 (well below the 0.02 threshold). This confirms the XGBoost configuration (max_depth=4, min_child_weight=5, early_stopping) effectively prevents overfitting even at high AUC.
 
@@ -242,7 +244,7 @@ To test robustness of the scaling curve to the failure definition, we repeat the
 
 The regime boundaries are robust: all three thresholds produce the same structure (rapid initial rise, plateau at N ≥ 12). The main effect of stricter SOH thresholds is a slight suppression of AUC at low N (0.842 → 0.808 at N=2), because fewer cycles are labeled as failures, reducing the positive-class signal. At N ≥ 12 all thresholds converge to AUC > 0.98.
 
-**Critical caveat:** The synthetic generator intentionally maximizes cell diversity at every dataset size by spreading degradation parameters across the full range (slowest to fastest fade). This design choice, combined with the KS-test-confirmed gap between synthetic and real degradation distributions (§4.3), means the curve represents an optimistic upper bound. The relative trend — rapid improvement to N=8–12, then diminishing returns — is the actionable finding, not the absolute AUC values.
+**Critical caveat:** The synthetic generator intentionally maximizes cell diversity at every dataset size by spreading degradation parameters across the full range (slowest to fastest fade). This design choice, combined with the KS-test-confirmed gap between synthetic and real degradation distributions (§4.3), means the curve represents an optimistic upper bound. The relative trend — rapid improvement to N=8–12, then continued gradual gains — is the actionable finding, not the absolute AUC values. Real-world data with measurement noise, censoring, and correlated degradation likely requires N≥50 to approach the synthetic curve's AUC — this remains unvalidated and is the most important direction for future work.
 
 #### 5.2.2 Market Simulation with Corrected Revenue
 
@@ -363,8 +365,8 @@ We have conducted a reproducibility and scaling study of the Shikdar–Laaksonen
 - This confirms that the framework needs substantial data (≥12 cells) to produce meaningful results, but does **not** validate the specific N estimates from the synthetic curve.
 
 **Remaining as assumptions for future work:**
-- The real-world N multiplier (how many more cells real data needs vs synthetic) is unknown and cannot be estimated from synthetic data alone.
-- The scaling curve has not been validated on multi-cell real datasets with diverse degradation.
+- The real-world N requirement is unknown and cannot be estimated from synthetic data alone. The curve continues to improve up to N=20 (0.986 AUC), and likely further; N≈50+ may be needed for equivalent real-data performance.
+- The scaling curve has not been validated on any multi-cell real dataset with diverse degradation.
 - Deep learning model variants could not be evaluated under CPU constraints.
 
 Future work should extend the real-data validation to larger, multi-chemistry datasets (15+ cells) to evaluate whether the synthetic scaling curve's regime boundaries generalize, and should assess the deep learning model variants that could not be tested in this CPU-constrained environment.

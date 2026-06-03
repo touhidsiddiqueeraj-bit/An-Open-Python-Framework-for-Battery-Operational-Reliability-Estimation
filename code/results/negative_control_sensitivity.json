@@ -1,0 +1,38 @@
+{
+  "negative_control_shuffled_labels": {
+    "macro_auc": 0.5316
+  },
+  "sensitivity_narrow": {
+    "macro_auc": 0.9825
+  },
+  "sensitivity_wide": {
+    "macro_auc": 0.9825
+  },
+  "seed_variance": {
+    "seeds": [
+      10,
+      20,
+      30,
+      40,
+      50
+    ],
+    "n2_aucs": [
+      0.8379,
+      0.8346,
+      0.8409,
+      0.8358,
+      0.8482
+    ],
+    "n20_aucs": [
+      0.9856,
+      0.9871,
+      0.9849,
+      0.9867,
+      0.9845
+    ],
+    "n2_mean": 0.8395,
+    "n2_std": 0.0054,
+    "n20_mean": 0.9858,
+    "n20_std": 0.0011
+  }
+}
