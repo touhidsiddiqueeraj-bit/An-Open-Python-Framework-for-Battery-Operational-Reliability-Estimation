@@ -28,3 +28,12 @@ Thumbs.db
 # Large downloads / raw data (must be downloaded separately)
 code/data/raw/
 code/data/processed/
+
+# Stale root-level artifacts
+Extension_Paper.ipynb
+Fixable_Limitations_Report.docx
+
+# Stale root-level artifacts
+Extension_Paper.ipynb
+Fixable_Limitations_Report.docx
+International Transactions on Electrical Energy Systems - 2026 - Shikdar - Learning When Not to Use a Battery  Multihorizon.pdf
