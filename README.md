@@ -64,7 +64,7 @@ Three bugs were found and fixed in the original codebase:
   title = {An Open Python Framework for Battery Operational Reliability Estimation},
   author = {{Team Dynamic}},
   year = {2026},
-  doi = {10.5281/zenodo.XXXXXXX},
+  doi = {10.5281/zenodo.20532601},
   url = {https://github.com/touhidsiddiqueeraj-bit/An-Open-Python-Framework-for-Battery-Operational-Reliability-Estimation}
 }
 ```

@@ -320,7 +320,7 @@ add_bullet_frame(slide, 0.8, 1.3, 11.5, 4.5, [
     "Full configuration — single config.yaml controls everything",
     "",
     "Code: github.com/teamdynamic/battery-reliability-extension",
-    "DOI: 10.5281/zenodo.XXXXXXX",
+    "DOI: 10.5281/zenodo.20532601",
 ], font_size=16)
 
 # ── SLIDE 11: Limitations & Future Work ─────────────────
