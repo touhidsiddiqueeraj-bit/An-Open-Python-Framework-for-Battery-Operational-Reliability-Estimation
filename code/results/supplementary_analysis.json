@@ -3,38 +3,38 @@
     "censor_0%": {
       "macro_auc": "0.9775",
       "nan_horizons": 0,
-      "fit_time_sec": 104.41,
-      "infer_time_ms": 17.98
+      "fit_time_sec": 0.7,
+      "infer_time_ms": 0.86
     },
     "censor_10%": {
       "macro_auc": "0.9239",
       "nan_horizons": 3,
-      "fit_time_sec": 15.86,
-      "infer_time_ms": 10.5
+      "fit_time_sec": 0.78,
+      "infer_time_ms": 0.68
     },
     "censor_20%": {
       "macro_auc": "nan",
       "nan_horizons": 4,
-      "fit_time_sec": 7.24,
-      "infer_time_ms": 20.41
+      "fit_time_sec": 0.14,
+      "infer_time_ms": 0.49
     },
     "censor_30%": {
       "macro_auc": "nan",
       "nan_horizons": 4,
-      "fit_time_sec": 8.17,
-      "infer_time_ms": 29.2
+      "fit_time_sec": 0.1,
+      "infer_time_ms": 1.28
     },
     "censor_50%": {
       "macro_auc": "nan",
       "nan_horizons": 4,
-      "fit_time_sec": 5.07,
-      "infer_time_ms": 22.36
+      "fit_time_sec": 2.67,
+      "infer_time_ms": 0.37
     },
     "censor_80%": {
       "macro_auc": "nan",
       "nan_horizons": 4,
-      "fit_time_sec": 10.33,
-      "infer_time_ms": 23.65
+      "fit_time_sec": 0.07,
+      "infer_time_ms": 0.38
     }
   },
   "per_feature_kl": {
@@ -81,17 +81,13 @@
       "syn_mean": 0.8103
     }
   },
-  "plateau_model": {
-    "a_hat_asymptotic_auc": 1.0084,
-    "a_bootstrap_ci_95": [
-      -282.1292,
-      182.089
-    ],
-    "b_hat": 0.3307,
-    "c_hat": 0.9777,
-    "auc_at_N50": 1.0012,
-    "auc_at_N100": 1.0048,
-    "auc_at_infinity": 1.0084
+  "plateau_assessment": {
+    "constrained_asymptote": 1.0,
+    "b_hat": 0.3446,
+    "c_hat": 1.1009,
+    "max_observed_auc": 0.9862,
+    "slope_at_N20": 0.000701,
+    "interpretation": "asymptote hits 1.0 boundary \u2014 insufficient curvature to estimate plateau; curve not saturated within N=2-20"
   },
   "power_analysis": {
     "N=2": {
@@ -150,7 +146,7 @@
     }
   },
   "computational_cost": {
-    "train_and_infer_time_sec_N20": 45.16,
-    "peak_memory_mb": 3003
+    "train_and_infer_time_sec_N20": 0.19,
+    "peak_memory_mb": 3002
   }
 }

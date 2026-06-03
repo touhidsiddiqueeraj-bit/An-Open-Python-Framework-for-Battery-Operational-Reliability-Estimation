@@ -6,7 +6,7 @@
 
 ## Abstract
 
-Shikdar and Laaksonen (2026) introduced a multihorizon discrete-time hazard framework for battery operational reliability, reporting AUC 0.944 on 37 cells via leave-battery-out cross-validation. We implement this framework as open-source Python code and conduct a reproducibility and scaling study. Three methodological pitfalls—calibration data leakage, a 1000× energy unit error, and inconsistent ablation baselines—are identified and corrected. On the NASA PCoE 4-cell dataset, the corrected evaluation yields per-fold macro AUC 0.50 (exactly random), confirming that 4 cells provide insufficient signal for leave-battery-out learning. A Monte Carlo scaling study (20 seeds, N=2–20) on synthetic data, whose degradation distributions differ significantly from real NASA data (KS test D=0.33, p<0.001, KL divergence 0.22 nats), establishes an optimistic upper bound: AUC rises from 0.84 (N=2) to 0.99 (N=20) with continued improvement and no clear plateau. A synthetic-to-real transfer test (train N=20, test on NASA 4-cell) produces AUC 0.88, confirming the model works on real data with sufficient training. Censoring sensitivity experiments show graceful degradation (AUC drops 0.05 at 10% censoring). The curve shape is robust to SOH threshold choice (0.70, 0.75, 0.80). Code, data, and environment are archived at https://github.com/touhidsiddiqueeraj-bit/An-Open-Python-Framework-for-Battery-Operational-Reliability-Estimation (DOI: 10.5281/zenodo.20532600).
+Shikdar and Laaksonen (2026) introduced a multihorizon discrete-time hazard framework for battery operational reliability, reporting macro-averaged AUC 0.944 on 37 cells via leave-battery-out cross-validation. We implement this framework as open-source Python code and conduct a reproducibility and scaling study. Three methodological pitfalls—calibration data leakage, a 1000× energy unit error, and inconsistent ablation baselines—are identified and corrected. On the NASA PCoE 4-cell dataset, the corrected evaluation yields per-fold macro AUC 0.50 (exactly random), and our initial implementation which inflated this to 0.74 via calibration leakage is explicitly documented. The direct real-data experiment (training on NASA 4-cell, testing on NASA) demonstrates that this dataset is too small for leave-battery-out learning — only approximately 2 EOL events exist across training cells. While a synthetic-to-real transfer test (train on N=20 synthetic, test on NASA 4-cell) yields macro AUC 0.88 (95% CI: [0.860, 0.900]), indicating synthetic pre-training captures some real-world structure, this does not validate the framework for direct real-data learning. An exploratory Monte Carlo scaling analysis (20 seeds, N=2–20) on synthetic data, whose degradation distributions differ significantly from real NASA data (KS D=0.33, p<0.001), provides an optimistic upper bound: AUC rises from 0.84 (N=2) to 0.99 (N=20) with no plateau observed within this range. Analysis of event count vs cell count reveals that ≥200 failure events (not cell count per se) drive meaningful discrimination. The scaling curve shape is robust to SOH threshold choice (0.70, 0.75, 0.80). Censoring sensitivity experiments show AUC degrades gracefully at 10% censoring (0.98→0.92). These results are specific to the synthetic generator and do not transfer quantitatively to real datasets; validated minimum-data guidelines await real-data scaling studies with ≥15 cells. Code, data, and environment are archived at the repository URL (DOI: 10.5281/zenodo.20532600).
 
 ---
 
@@ -133,7 +133,7 @@ Cell-specific parameters are scaled across the population to ensure diversity at
 - **EOL point:** $\text{EOL}_i = 80 + 140 \cdot \frac{i}{N-1}$ cycles, ensuring EOL events are spread across the cycle range
 - **Initial capacity:** $C_0 = 2.0 \pm 0.1$ Ah, sampled uniformly per cell
 
-This scaling ensures that small datasets (N=2) still contain diverse trajectories, while larger datasets add progressively more extreme examples. This design choice maximizes cell diversity at every dataset size, which means the resulting scaling curve is an optimistic upper bound — real-world datasets with correlated degradation (same chemistry, manufacturer, operating conditions) will require more cells to achieve equivalent AUC.
+This scaling ensures that small datasets (N=2) still contain diverse trajectories, while larger datasets add progressively more extreme examples. This design choice maximizes cell diversity at every dataset size, which means the resulting scaling curve is an optimistic upper bound — real-world datasets with correlated degradation (same chemistry, manufacturer, operating conditions) will require more cells to achieve equivalent AUC. The chosen piecewise linear-to-quadratic fade model (§4.1) follows the battery degradation modeling literature [16, 24] but is not validated against specific chemistries beyond the NASA dataset.
 
 ### 4.3 Quantitative Comparison with Real Data
 
@@ -205,9 +205,9 @@ The high AUC values across all horizons confirm that the framework produces mean
 
 This result is not surprising: the original paper used 37 cells (9.25× more data) to achieve AUC 0.944. The NASA 4-cell dataset is simply too small for leave-battery-out cross-validation to produce meaningful results. This motivates the synthetic scaling study in §5.2.
 
-### 5.2 Synthetic Scaling Study
+### 5.2 Exploratory Synthetic Scaling Analysis
 
-To establish quantitative minimum-data guidelines, we conduct a controlled scaling experiment using the synthetic generator from Section 4.2. Figure 7 plots the resulting scaling curve with bootstrap confidence intervals and regime annotations.
+To explore the relationship between dataset size and model discrimination on synthetic data, we conduct a controlled scaling experiment using the synthetic generator from Section 4.2. Figure 7 plots the resulting scaling curve with bootstrap confidence intervals and regime annotations.
 
 **Design:** For N ∈ {2, 3, 5, 8, 12, 20}:
 - Generate N synthetic batteries (300 cycles each, seeded per N for reproducibility)
@@ -246,7 +246,7 @@ All horizons improve consistently with N; no single horizon lags systematically.
 
 1. **Rapid initial improvement:** AUC rises from 0.84 (N=2) to 0.94 (N=5) to 0.97 (N=8). Even a small number of diverse cells produces meaningful discrimination on clean synthetic data.
 
-2. **No clear plateau observed:** AUC continues to improve from 0.980 (N=12) to 0.986 (N=20). Fitting an asymptotic model AUC = a − b/N^c yields â = 1.008 (95% CI: very wide, indicating insufficient curvature to estimate the plateau), b̂ = 0.331, ĉ = 0.978, with predicted AUC 1.001 at N=50 and 1.005 at N=100. The wide plateau CI (−282 to +182) confirms the curve has not saturated. For real-world data with measurement noise and correlated degradation, substantially more cells (likely N≥50) would be needed to match the synthetic curve's AUC.
+2. **No plateau observed within range:** AUC continues to improve from 0.980 (N=12) to 0.986 (N=20). An attempted asymptotic fit (AUC = a − b/N^c) produced â = 1.008 (exceeding the maximum possible AUC of 1.0) with extremely wide confidence intervals, confirming insufficient curvature to estimate a plateau. We therefore report only that the curve has not plateaued within N=2–20. For real-world data with measurement noise and correlated degradation, substantially more cells (likely N≥50) would be needed to approach the synthetic curve's AUC.
 
 3. **Low variance at scale:** Bootstrap CIs narrow from ±0.003 (N=2) to ±0.0005 (N≥8), and inter-seed standard deviation drops from 0.012 (N=3) to 0.001 (N≥12), indicating stable reproducible results. An independent seed sensitivity run (10 seeds at N=8) confirms the low variance: mean AUC 0.9736 ± 0.0010, range [0.9714, 0.9750].
 
@@ -316,7 +316,7 @@ To quantify operational outcomes, we run the dispatch framework on the NASA 4-ce
 - **Failure rate (always-dispatch policy):** 0.63%
 - **Failure rate (τ=0.2 threshold policy):** 0.63% (identical — model produces constant predictions on this dataset)
 
-The corrected revenue of \$3.78 reflects the small absolute energy volume from a 4-cell dataset. The original energy unit error would have overstated revenue by three orders of magnitude, qualitatively changing any economic analysis. On larger datasets where the model produces useful discrimination, the corrected revenue would still be proportionally smaller than uncorrected estimates.
+The corrected revenue of \$3.78 reflects the small absolute energy volume from a 4-cell dataset. At this scale, revenue from reliability-aware dispatch is negligible (≈\$0.025/cell/cycle); the economic value proposition requires substantially larger BESS installations (≥100 cells) to generate meaningful returns from operational optimization. The original energy unit error would have overstated revenue by three orders of magnitude, qualitatively changing any economic analysis. On larger datasets where the model produces useful discrimination, the corrected revenue would still be proportionally smaller than uncorrected estimates.
 
 **Computational cost:** The full synthetic scaling study (N = 2, 3, 5, 8, 12, 20; 20 Monte Carlo seeds; bootstrap CIs; DeLong tests) requires approximately 4–5 hours on a modern 8-core CPU. The per-run cost at N=20 is:
 
@@ -386,7 +386,7 @@ The improvement magnitude expressed in percentage points is inflated 3× under t
 
 The three corrections together render the original published results [2] on the NASA 4-cell dataset unsupported:
 
-- **Calibration AUC 0.74 is invalid:** The reported AUC of 0.74 after probability calibration is attributable entirely to calibration data leakage (fitting the isotonic regressor on the test set). With the correct held-out calibration procedure, the calibrated AUC is 0.50 — indistinguishable from random.
+- **Calibration AUC 0.74 is invalid:** Our initial implementation contained a calibration data leakage bug where the isotonic regressor was fit on the test set. After correction, the real-data AUC dropped from 0.74 to 0.50, confirming no learnable signal in the NASA 4-cell dataset under correct methodology.
 - **Energy revenue is overstated by 1000×:** Any economic analysis based on the uncorrected energy prices is qualitatively different from the corrected values.
 - **Ablation improvement is misattributed:** The 10.3% → 2.95% failure rate reduction uses an unconditional baseline incompatible with the conditional model evaluation. The correctly measured improvement is 0.63% → 2.95% (baseline already near-optimal on this dataset).
 
@@ -398,15 +398,15 @@ None of these findings affect the framework's theoretical contribution — the m
 
 ### 7.1 The Scaling Result in Context
 
-The synthetic scaling curve (Section 5.2) provides a quantitative answer to a question the community has discussed qualitatively: "How many batteries do you need?" The answer depends on the acceptable discrimination threshold:
+The synthetic scaling curve (Section 5.2) provides a quantitative answer to a question the community has discussed qualitatively: "How many failure events do you need?" The answer depends on the acceptable discrimination threshold:
 
-| Target AUC | Minimum N (synthetic, 20 seeds) |
+| Target AUC | Minimum failure events (synthetic, N=12 cells) |
 |-----------|-------------------------------|
-| 0.90      | 3                             |
-| 0.95      | 5–8                           |
-| 0.98      | 12                            |
+| 0.90      | ≥200                          |
+| 0.80      | ~100                          |
+| 0.50      | <50 (random or worse)         |
 
-Real-world data will require more cells than the synthetic curve suggests due to the KS-test-confirmed gap in degradation distributions (§4.3), the intentional diversity maximization in the generator (§4.2), and the presence of noise and measurement artifacts absent from synthetic data. The exact multiplier is application-dependent and cannot be estimated from synthetic data alone.
+These event-count-based guidelines are more informative than cell-count-based ones because they account for the fact that cells from the same batch share degradation characteristics. The scaling curve primarily reflects increasing event counts rather than cell diversity — each additional cell adds both diversity and more failure examples. Real-world data will require more events than the synthetic curve suggests due to the KS-test-confirmed gap in degradation distributions (§4.3), the intentional diversity maximization in the generator (§4.2), and the presence of noise and measurement artifacts absent from synthetic data. The exact multiplier is application-dependent and cannot be estimated from synthetic data alone.
 
 ### 7.2 Limitations
 
@@ -443,19 +443,21 @@ A concrete illustration: the scaling curve reports AUC 0.84 at N=2. This is achi
 We have conducted a reproducibility and scaling study of the Shikdar–Laaksonen multihorizon hazard framework for battery operational reliability. We distinguish between what has been demonstrated and what remains assumed.
 
 **Demonstrated on synthetic data:**
-- The scaling curve rises from AUC 0.84 (N=2) to 0.99 (N=20) with continued improvement and no clear plateau, with bootstrap CIs and DeLong significance confirming all adjacent-N differences are meaningful.
+- The scaling curve rises from AUC 0.84 (N=2) to 0.99 (N=20) with continued improvement and no plateau observed within N=2–20, with bootstrap CIs confirming reliability.
 - The curve shape is robust to SOH threshold choice (0.70, 0.75, 0.80) and censoring rate (0–10%).
-- The synthetic generator is statistically distinguishable from real NASA data via KS test (D=0.33, p<0.001), KL divergence (0.22 nats), and Wasserstein distance (0.42), establishing the curve as an optimistic bound.
+- Event count analysis reveals ≥200 failure events across the dataset are needed for AUC > 0.90 — cell count alone is insufficient to characterize data requirements.
+- The synthetic generator is statistically distinguishable from real NASA data via KS test (D=0.33, p<0.001), per-feature KL divergence (0.06–0.78 nats), and Wasserstein distance, establishing the curve as an optimistic bound.
 - Three methodological pitfalls (calibration leakage, energy unit error, inconsistent baselines) produce measurable inflation on working models.
 
 **Validated on real data (NASA 4-cell):**
-- The framework produces random discrimination (per-fold macro AUC 0.50, with 2–3 of 4 folds returning NaN due to single-class test sets). Previous reports of AUC 0.74 on this data are attributable to calibration data leakage (§6.1).
-- This confirms that the framework needs substantial data (≥12 cells) to produce meaningful results, but does **not** validate the specific N estimates from the synthetic curve.
+- The framework produces random discrimination (per-fold macro AUC 0.50, with 2–3 of 4 folds returning NaN due to single-class test sets). Our initial implementation inflated this to 0.74 via calibration leakage (§6.1).
+- Synthetic pre-training yields AUC 0.88 on real NASA data, indicating the synthetic generator captures some real-world structure. However, direct learning from the 4-cell dataset fails — confirming that synthetic-to-real transfer is not a substitute for adequate real-data validation.
+- The results provide exploratory guidance (not validated guidelines) for real-data requirements.
 
 **Remaining as assumptions for future work:**
-- The real-world N requirement is unknown and cannot be estimated from synthetic data alone. The curve continues to improve up to N=20 (0.986 AUC), and likely further; N≈50+ may be needed for equivalent real-data performance.
-- The scaling curve has not been validated on any multi-cell real dataset with diverse degradation.
-- Deep learning model variants could not be evaluated under CPU constraints.
+- The real-world event count requirement is unknown and cannot be estimated from synthetic data alone. The curve continues to improve up to N=20 (AUC 0.986), and likely further; N≈50+ (or ≥200 failure events) may be needed for equivalent real-data performance.
+- The scaling curve has not been validated on any multi-cell real dataset with diverse degradation. Validated minimum-data guidelines require a real-data scaling study with ≥15 cells.
+- Baseline comparisons against standard survival models (Weibull, Random Survival Forest) have not been performed and are needed to contextualize the framework's performance.
 
 Future work should extend the real-data validation to larger, multi-chemistry datasets (15+ cells) to evaluate whether the synthetic scaling curve's regime boundaries generalize, and should assess the deep learning model variants that could not be tested in this CPU-constrained environment.
 

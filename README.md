@@ -2,28 +2,28 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
-Open-source Python implementation of the Shikdar–Laaksonen (2026) multihorizon hazard framework for battery operational reliability, with a quantitative synthetic scaling study establishing minimum-data guidelines.
+Open-source Python implementation of the Shikdar–Laaksonen (2026) multihorizon hazard framework for battery operational reliability, with reproducibility analysis, methodological corrections, and an exploratory synthetic scaling study.
 
 ## Key Results
 
 | Question | Answer |
 |----------|--------|
 | AUC on NASA 4-cell (per-fold, valid metric) | **0.50** (exactly random — only 2 EOL events across 3 training cells) |
-| Minimum N for AUC > 0.95 on synthetic | 5–8 cells |
-| Minimum N for AUC > 0.98 on synthetic | 12–20 cells (curve continues to improve, no plateau observed up to N=20) |
-| Asymptotic plateau estimate | AUC = 1.008 − 0.331/N^0.978; wide CI confirms no saturation |
-| Real-data N requirement | Unknown — likely ≥50; unvalidated (see §7.2) |
-| Min. failure events for meaningful AUC | ≥200 events across dataset (at N=12, AUC=0.91; at 100 events, drops to 0.64) |
-| Transfer test (train synthetic N=20 → test NASA) | Macro AUC **0.88** (95% CI: [0.860, 0.900]) — significantly > 0.50 |
-| Calibration leakage inflation | +0.016–0.28 AUC (corrected in §6.1) |
+| Exploratory synthetic scaling: N for AUC > 0.95 | 5–8 cells (synthetic only; not validated on real data) |
+| Exploratory synthetic scaling: N for AUC > 0.98 | 12–20 cells (curve continues to improve, no plateau within N=2-20) |
+| Min. failure events for meaningful AUC (synthetic) | ≥200 events across dataset (at N=12, AUC=0.91; at 100 events, drops to 0.64) |
+| Real-data N requirement | Unknown — validated guidelines require ≥15 cells real-data scaling study |
+| Transfer test (train synthetic N=20 → test NASA) | Macro AUC **0.88** (95% CI: [0.860, 0.900]) — synthetic pre-training captures some real-world structure |
+| Direct real-data training (NASA 4-cell) | AUC **0.50** — dataset too small for this method |
+| Calibration leakage (our re-implementation bug) | +0.016–0.28 inflation; corrected AUC dropped from 0.74 to 0.50 |
 | Energy unit error | 1000× revenue overstatement (corrected in §6.2) |
 | Negative control (shuffled labels) | AUC **0.53** — model does not find spurious patterns |
 | Censoring sensitivity | 10% censoring → AUC drops 0.98→0.92; ≥20% → all horizons single-class |
-| Power to detect AUC > 0.95 | 1.0 at N ≥ 8 (synthetic) |
+| Power to detect AUC > 0.95 (synthetic) | 1.0 at N ≥ 8 |
 | Seed sensitivity (N=8, 10 seeds) | 0.9736 ± 0.0010 (range [0.9714, 0.9750]) |
 | Synthetic vs real distribution | KS D=0.33 (p<0.001), per-feature KL 0.06–0.78 nats |
 
-**Scaling curve:** AUC rises from 0.84 (N=2) → 0.94 (N=5) → 0.97 (N=8) → 0.99 (N=20), with continued improvement and no clear plateau. An asymptotic fit (AUC = a − b/N^c) gives â=1.008, b̂=0.331, ĉ=0.978, predicting AUC 1.001 at N=50, but the plateau CI is extremely wide [−282, +182], confirming insufficient curvature to estimate a plateau.
+**Exploratory scaling curve (synthetic data only):** AUC rises from 0.84 (N=2) → 0.94 (N=5) → 0.97 (N=8) → 0.99 (N=20), with no plateau observed within N=2-20. An asymptotic fit constrained to a ≤ 1.0 hits the boundary, confirming insufficient curvature to estimate a plateau. **These results are specific to the synthetic generator and do not transfer quantitatively to real datasets.**
 
 ## Quick Start
 

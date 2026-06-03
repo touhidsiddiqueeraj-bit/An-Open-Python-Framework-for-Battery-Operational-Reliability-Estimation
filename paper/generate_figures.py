@@ -209,7 +209,7 @@ def fig7_scaling_curve():
     ax.set_ylabel("Macro-averaged AUC", fontsize=12)
     ax.set_title("Figure 1: Model Discrimination vs Dataset Size", fontsize=13)
     ax.set_xlim(1, 22)
-    ax.set_ylim(0.75, 1.01)
+    ax.set_ylim(0.5, 1.01)
     ax.set_xticks(N)
     ax.legend(fontsize=9, loc="lower right")
     sns.despine()
