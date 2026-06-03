@@ -1,0 +1,36 @@
+{
+  "synthetic_eval_macro_auc": 0.9775,
+  "nasa_transfer_macro_auc": 0.8817,
+  "nasa_per_horizon": {
+    "10": {
+      "auc": 0.985,
+      "model_brier": 0.027,
+      "baseline_brier": 0.006200000178068876,
+      "skill_score": -3.320199966430664
+    },
+    "20": {
+      "auc": 0.9562,
+      "model_brier": 0.111,
+      "baseline_brier": 0.01549999974668026,
+      "skill_score": -6.172399997711182
+    },
+    "30": {
+      "auc": 0.8577,
+      "model_brier": 0.2654,
+      "baseline_brier": 0.0215000007301569,
+      "skill_score": -11.328100204467773
+    },
+    "50": {
+      "auc": 0.7279,
+      "model_brier": 0.399,
+      "baseline_brier": 0.03629999980330467,
+      "skill_score": -9.988100051879883
+    }
+  },
+  "overfitting_test": {
+    "train_auc": 0.9979,
+    "val_auc": 0.9921,
+    "test_auc": 0.9923,
+    "train_test_gap": 0.0056
+  }
+}
