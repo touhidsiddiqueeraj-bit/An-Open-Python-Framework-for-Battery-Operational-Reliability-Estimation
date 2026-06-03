@@ -1,13 +1,12 @@
 import numpy as np
 import xgboost as xgb
-from sklearn.multioutput import MultiOutputClassifier
 
 
 class XGBoostHazard:
     """Multihorizon hazard model using gradient boosted trees.
 
-    Trains one multi-output classifier that jointly predicts failure
-    probability for all horizons H ∈ {10, 20, 30, 50}.
+    Trains one XGBClassifier per prediction horizon with early stopping
+    on a held-out validation set.
     """
 
     def __init__(self, config=None):
@@ -26,29 +25,27 @@ class XGBoostHazard:
             "random_state": 42,
         }
         self.early_stopping = c.get("early_stopping_rounds", 20)
-        self.model = None
+        self.models_ = []
+        self.n_horizons_ = 0
 
     def fit(self, X_train, y_train, X_val=None, y_val=None):
-        """Train the model.
+        """Train one model per horizon with early stopping."""
+        self.n_horizons_ = y_train.shape[1]
+        self.models_ = []
 
-        y_train : array-like of shape (n_samples, n_horizons)
-        """
-        self.model = MultiOutputClassifier(
-            xgb.XGBClassifier(**self.params), n_jobs=1)
         if X_val is not None and y_val is not None:
-            eval_set = [(X_val, y_val[:, i]) for i in range(y_val.shape[1])]
-            # MultiOutputClassifier doesn't support eval_set natively;
-            # we train per-horizon with early stopping instead.
-            self.model.estimators_ = []
-            for i in range(y_train.shape[1]):
+            for i in range(self.n_horizons_):
                 est = xgb.XGBClassifier(**self.params,
                                         early_stopping_rounds=self.early_stopping)
                 est.fit(X_train, y_train[:, i],
                         eval_set=[(X_val, y_val[:, i])],
                         verbose=False)
-                self.model.estimators_.append(est)
+                self.models_.append(est)
         else:
-            self.model.fit(X_train, y_train)
+            for i in range(self.n_horizons_):
+                est = xgb.XGBClassifier(**self.params)
+                est.fit(X_train, y_train[:, i])
+                self.models_.append(est)
         return self
 
     def predict_proba(self, X):
@@ -56,11 +53,10 @@ class XGBoostHazard:
 
         Returns shape (n_samples, n_horizons).
         """
-        if self.model is None:
+        if not self.models_:
             raise RuntimeError("Model not fitted.")
-        # MultiOutputClassifier returns a list of (n, 2) arrays
-        probs = self.model.predict_proba(X)
-        return np.column_stack([p[:, 1] for p in probs])
+        probs = np.column_stack([m.predict_proba(X)[:, 1] for m in self.models_])
+        return probs
 
     @property
     def name(self):

@@ -50,7 +50,7 @@ def generate_synthetic_nasa(n_cells=4, n_cycles=300, seed=42):
 
             voltage = 3.7 + rng.normal(0, 0.05)
             current = -2.0 + rng.normal(0, 0.1)
-            temperature = 25.0 + rng.normal(0, 2.0) + 0.02 * t
+            temperature = 25.0 + rng.normal(0, 2.0)
             measurement_time = t * 1.5 + rng.normal(0, 0.1)
 
             records.append({

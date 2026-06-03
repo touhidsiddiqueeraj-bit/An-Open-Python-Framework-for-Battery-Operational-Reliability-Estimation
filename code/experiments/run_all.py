@@ -13,6 +13,10 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from scipy.stats import ks_2samp, norm
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.data.nasa import NASALoader
@@ -343,10 +347,10 @@ def exp_market(cfg):
     cv = run_xgboost_cv(df, feature_cols, horizon_cols, window, cfg)
     P_cal = cv["calibrated"]
 
-    # Build a proxy eol_cycle from targets
-    y = cv["targets"][:, 0]
-    eol_positions = np.where(y == 1)[0]
-    eol_cycle = int(eol_positions[0]) if len(eol_positions) > 0 else 200
+    # Build per-cell eol_cycle from the labeled DataFrame
+    eol_by_cell = df.groupby("cell_id")["eol_cycle"].first().dropna()
+    # Use the median eol_cycle across cells for the stacked simulation
+    eol_cycle = int(eol_by_cell.median()) if len(eol_by_cell) > 0 else 200
 
     ms = MarketSimulator(
         price_mean=cfg["market"]["price_mean"],
@@ -454,25 +458,104 @@ def exp_ablation(cfg):
     return results
 
 
+def _bootstrap_ci(values, n_resamples=10000, ci=0.95):
+    """Compute percentile bootstrap confidence interval for the mean."""
+    values = np.asarray(values)
+    values = values[~np.isnan(values)]
+    if len(values) < 3:
+        return float("nan"), float("nan")
+    means = np.empty(n_resamples)
+    for i in range(n_resamples):
+        boot = np.random.choice(values, size=len(values), replace=True)
+        means[i] = boot.mean()
+    alpha = (1 - ci) / 2
+    lower = np.percentile(means, alpha * 100)
+    upper = np.percentile(means, (1 - alpha) * 100)
+    return round(lower, 4), round(upper, 4)
+
+
+def _delong_test(auc1, auc2, n1, n2):
+    """Approximate DeLong test for paired AUC comparison.
+
+    Uses the normal approximation: z = (auc1 - auc2) / sqrt(var1 + var2).
+    Returns z-statistic and p-value (two-sided).
+    """
+    se1 = np.sqrt((auc1 * (1 - auc1) + (n1 - 1) * (auc1 / (2 - auc1) - auc1**2)) / n1)
+    se2 = np.sqrt((auc2 * (1 - auc2) + (n2 - 1) * (auc2 / (2 - auc2) - auc2**2)) / n2)
+    se_pooled = np.sqrt(se1**2 + se2**2)
+    if se_pooled < 1e-10:
+        return 0.0, 1.0
+    z = (auc1 - auc2) / se_pooled
+    p = 2 * (1 - norm.cdf(abs(z)))
+    return round(z, 4), round(p, 6)
+
+
+def _run_scaling_at_threshold(n_values, n_seeds, soh_threshold, cfg):
+    """Run scaling study at a given SOH threshold. Returns dict of results."""
+    horizons = cfg["horizons"]
+    feature_cols = cfg["features"]["input_cols"] + cfg["features"]["derived_cols"]
+    window = cfg["features"]["window_size"]
+    model_cfg = cfg["models"]["xgboost"].copy()
+    model_cfg["window_size"] = window
+    calibrator = ProbabilityCalibrator(method=cfg["calibration"]["method"])
+
+    results = {"soh_threshold": soh_threshold, "N": n_values,
+               "auc_mean": [], "auc_ci_low": [], "auc_ci_high": [],
+               "per_seed": {}}
+
+    for idx, N in enumerate(n_values):
+        seed_aucs = []
+        for seed in range(n_seeds):
+            df = generate_synthetic_nasa(n_cells=N, n_cycles=300, seed=seed * 100 + N)
+            labeler = CompositeFailureLabeler(
+                soh_threshold=soh_threshold,
+                sudden_drop=cfg["failure"]["sudden_drop_threshold"])
+            df = labeler.label(df.copy(), method="single")
+            horizon_cols = [f"fail_{h}" for h in horizons]
+
+            cv = leave_battery_out_cv(
+                df, XGBoostHazard, model_cfg, feature_cols, horizon_cols,
+                calibrator, seed=seed, horizons=horizons)
+
+            if len(cv["predictions"]) == 0:
+                auc = float("nan")
+            else:
+                m = compute_metrics(cv["targets"], cv["predictions"], horizons=horizons)
+                auc = m["macro_avg"]["auc"]
+            seed_aucs.append(auc)
+            if f"seed_{seed}" not in results["per_seed"]:
+                results["per_seed"][f"seed_{seed}"] = {}
+            results["per_seed"][f"seed_{seed}"][str(N)] = auc
+
+        mean_auc = round(np.nanmean(seed_aucs), 4) if seed_aucs else float("nan")
+        lo, hi = _bootstrap_ci(seed_aucs)
+        results["auc_mean"].append(mean_auc)
+        results["auc_ci_low"].append(lo)
+        results["auc_ci_high"].append(hi)
+
+    return results
+
+
 def exp_scaling(cfg):
     log("=" * 50)
     log("EXPERIMENT: Synthetic Scaling Study")
     log("=" * 50)
 
-    n_values = [2, 3, 5, 8, 12, 20, 30, 50]
-    n_seeds = 3
+    n_values = [2, 3, 5, 8, 12, 20]
+    n_seeds = 20
     horizons = cfg["horizons"]
     feature_cols = cfg["features"]["input_cols"] + cfg["features"]["derived_cols"]
     window = cfg["features"]["window_size"]
-    model_cfg = cfg["models"]["xgboost"]
+    model_cfg = cfg["models"]["xgboost"].copy()
     model_cfg["window_size"] = window
     calibrator = ProbabilityCalibrator(method=cfg["calibration"]["method"])
 
-    results = {"N": n_values, "auc_mean": [], "auc_std": [], "per_seed": {}}
+    results = {"N": n_values, "n_seeds": n_seeds,
+               "auc_mean": [], "auc_std": [],
+               "auc_ci_low": [], "auc_ci_high": [],
+               "delong": {}, "per_seed": {}}
 
-    for seed in range(n_seeds):
-        results["per_seed"][f"seed_{seed}"] = {}
-        log(f"Seed {seed} / {n_seeds - 1}")
+    all_seed_aucs = []
 
     for idx, N in enumerate(n_values):
         log(f"  N={N} ({idx+1}/{len(n_values)})")
@@ -497,16 +580,189 @@ def exp_scaling(cfg):
                 m = compute_metrics(cv["targets"], cv["predictions"], horizons=horizons)
                 auc = m["macro_avg"]["auc"]
             seed_aucs.append(auc)
+            if f"seed_{seed}" not in results["per_seed"]:
+                results["per_seed"][f"seed_{seed}"] = {}
             results["per_seed"][f"seed_{seed}"][str(N)] = auc
-            log(f"    seed={seed}: AUC={auc:.4f} ({elapsed:.1f}s)")
+            sys.stdout.write(f"\r    N={N} seed={seed+1}/{n_seeds} AUC={auc:.4f} ({elapsed:.1f}s)  ")
+            sys.stdout.flush()
+        sys.stdout.write("\n")
 
-        mean_auc = np.nanmean(seed_aucs)
-        std_auc = np.nanstd(seed_aucs, ddof=1) if np.sum(~np.isnan(seed_aucs)) > 1 else 0
-        results["auc_mean"].append(round(mean_auc, 4))
-        results["auc_std"].append(round(std_auc, 4))
-        log(f"  N={N}: mean AUC={mean_auc:.4f} +/- {std_auc:.4f}")
+        mean_auc = round(np.nanmean(seed_aucs), 4)
+        std_auc = round(np.nanstd(seed_aucs, ddof=1), 4) if len(seed_aucs) > 1 else 0.0
+        lo, hi = _bootstrap_ci(seed_aucs)
+        results["auc_mean"].append(mean_auc)
+        results["auc_std"].append(std_auc)
+        results["auc_ci_low"].append(lo)
+        results["auc_ci_high"].append(hi)
+        all_seed_aucs.append(seed_aucs)
+        log(f"  N={N}: mean AUC={mean_auc:.4f} +/- {std_auc:.4f}  "
+            f"95% CI=[{lo:.4f}, {hi:.4f}]")
+
+    # DeLong tests between adjacent N values
+    log("  --- DeLong significance tests (adjacent N) ---")
+    for i in range(len(n_values) - 1):
+        n1_val = n_values[i]
+        n2_val = n_values[i + 1]
+        auc1 = results["auc_mean"][i]
+        auc2 = results["auc_mean"][i + 1]
+        n_obs = max(len([x for x in all_seed_aucs[i] if not np.isnan(x)]),
+                    len([x for x in all_seed_aucs[i + 1] if not np.isnan(x)]))
+        z, p = _delong_test(auc1, auc2, n_obs, n_obs)
+        results["delong"][f"{n1_val}_vs_{n2_val}"] = {"z": z, "p": p}
+        sig = "significant" if p < 0.05 else "not significant"
+        log(f"    N={n1_val} vs N={n2_val}: z={z:.4f}, p={p:.6f} ({sig})")
 
     save_results("scaling_monte_carlo", results)
+    return results
+
+
+def exp_soh_sensitivity(cfg):
+    log("=" * 50)
+    log("EXPERIMENT: SOH Threshold Sensitivity")
+    log("=" * 50)
+
+    n_values = [2, 5, 12, 20]
+    n_seeds = 10
+    thresholds = [0.70, 0.75, 0.80]
+
+    results = {"thresholds": {}, "n_values": n_values}
+    for thresh in thresholds:
+        log(f"  SOH threshold = {thresh}")
+        r = _run_scaling_at_threshold(n_values, n_seeds, thresh, cfg)
+        results["thresholds"][str(thresh)] = {
+            "auc_mean": r["auc_mean"],
+            "auc_ci_low": r["auc_ci_low"],
+            "auc_ci_high": r["auc_ci_high"],
+        }
+        for idx, N in enumerate(n_values):
+            log(f"    N={N}: AUC={r['auc_mean'][idx]}  CI=[{r['auc_ci_low'][idx]}, {r['auc_ci_high'][idx]}]")
+
+    save_results("soh_sensitivity", results)
+    return results
+
+
+def exp_calibration_leakage(cfg):
+    log("=" * 50)
+    log("EXPERIMENT: Calibration Leakage Demonstration")
+    log("=" * 50)
+
+    N = 20
+    n_seeds = 10
+    horizons = cfg["horizons"]
+    feature_cols = cfg["features"]["input_cols"] + cfg["features"]["derived_cols"]
+    window = cfg["features"]["window_size"]
+    model_cfg = cfg["models"]["xgboost"].copy()
+    model_cfg["window_size"] = window
+
+    correct_aucs = []
+    leaked_aucs = []
+
+    for seed in range(n_seeds):
+        df = generate_synthetic_nasa(n_cells=N, n_cycles=300, seed=seed * 100 + N)
+        labeler = CompositeFailureLabeler(
+            soh_threshold=cfg["failure"]["soh_threshold"],
+            sudden_drop=cfg["failure"]["sudden_drop_threshold"])
+        df = labeler.label(df.copy(), method="single")
+        horizon_cols = [f"fail_{h}" for h in horizons]
+
+        cell_ids = np.asarray(df["cell_id"].unique())
+        rng_seed = np.random.default_rng(seed)
+        rng_seed.shuffle(cell_ids)
+
+        for test_cell in cell_ids[:3]:
+            train_mask = df["cell_id"] != test_cell
+            test_mask = df["cell_id"] == test_cell
+
+            X_train = df.loc[train_mask, feature_cols].values.astype(np.float32)
+            y_train = df.loc[train_mask, horizon_cols].values.astype(np.float32)
+            X_test = df.loc[test_mask, feature_cols].values.astype(np.float32)
+            y_test = df.loc[test_mask, horizon_cols].values.astype(np.float32)
+
+            split = int(len(X_train) * 0.8)
+            X_tr, y_tr = X_train[:split], y_train[:split]
+            X_val, y_val = X_train[split:], y_train[split:]
+
+            # Train model
+            mdl = XGBoostHazard(config=model_cfg)
+            mdl.fit(X_tr, y_tr, X_val, y_val)
+            y_pred = mdl.predict_proba(X_test)
+            y_pred_val = mdl.predict_proba(X_val)
+
+            # Correct calibration: fit on val, apply to test
+            cal_correct = ProbabilityCalibrator(method="isotonic")
+            cal_correct.fit(y_pred_val, y_val, horizons=horizons)
+            y_cal_correct = cal_correct.transform(y_pred, horizons=horizons)
+
+            # Leaked calibration: fit on test, apply to test
+            cal_leaked = ProbabilityCalibrator(method="isotonic")
+            cal_leaked.fit(y_pred, y_test, horizons=horizons)
+            y_cal_leaked = cal_leaked.transform(y_pred, horizons=horizons)
+
+            m_correct = compute_metrics(y_test, y_cal_correct, horizons=horizons)
+            m_leaked = compute_metrics(y_test, y_cal_leaked, horizons=horizons)
+
+            correct_aucs.append(m_correct["macro_avg"]["auc"])
+            leaked_aucs.append(m_leaked["macro_avg"]["auc"])
+
+    mean_correct = round(np.mean(correct_aucs), 4)
+    mean_leaked = round(np.mean(leaked_aucs), 4)
+    inflation = round(mean_leaked - mean_correct, 4)
+
+    results = {
+        "N": N,
+        "n_seeds": n_seeds,
+        "correct_auc_mean": mean_correct,
+        "leaked_auc_mean": mean_leaked,
+        "inflation": inflation,
+        "per_fold_correct": correct_aucs,
+        "per_fold_leaked": leaked_aucs,
+    }
+
+    log(f"  Correct calibration (fit on val): mean AUC = {mean_correct:.4f}")
+    log(f"  Leaked calibration (fit on test): mean AUC = {mean_leaked:.4f}")
+    log(f"  Inflation: +{inflation:.4f} AUC")
+
+    save_results("calibration_leakage_demo", results)
+    return results
+
+
+def exp_ks_test(cfg):
+    log("=" * 50)
+    log("EXPERIMENT: KS Test — Synthetic vs Real Degradation")
+    log("=" * 50)
+
+    loader = NASALoader(data_dir=cfg["execution"]["data_dir"])
+    df_real = loader.load_classic()
+    if df_real.empty:
+        log("  No real NASA data found, skipping.")
+        return None
+
+    df_syn = generate_synthetic_nasa(n_cells=4, seed=42)
+
+    # Compute degradation rates (d_soh)
+    real_rates = df_real.groupby("cell_id")["soh"].diff().dropna().values
+    syn_rates = df_syn.groupby("cell_id")["soh"].diff().dropna().values
+
+    stat, p_value = ks_2samp(real_rates, syn_rates)
+
+    results = {
+        "real_n_obs": len(real_rates),
+        "syn_n_obs": len(syn_rates),
+        "real_mean_dsoh": float(np.mean(real_rates)),
+        "syn_mean_dsoh": float(np.mean(syn_rates)),
+        "ks_statistic": float(stat),
+        "ks_p_value": float(p_value),
+    }
+
+    log(f"  Real d_soh: mean={results['real_mean_dsoh']:.6f}, n={results['real_n_obs']}")
+    log(f"  Syn d_soh: mean={results['syn_mean_dsoh']:.6f}, n={results['syn_n_obs']}")
+    log(f"  KS statistic: {stat:.4f}, p-value: {p_value:.6f}")
+    if p_value < 0.05:
+        log("  → Distributions differ significantly (reject H0)")
+    else:
+        log("  → No significant difference detected")
+
+    save_results("ks_test", results)
     return results
 
 
@@ -520,18 +776,18 @@ EXPERIMENTS = {
     "dispatch": (exp_dispatch, "Dispatch policy comparison"),
     "market": (exp_market, "Market simulation"),
     "ablation": (exp_ablation, "Ablation study"),
-    "scaling": (exp_scaling, "Synthetic scaling study"),
+    "scaling": (exp_scaling, "Synthetic scaling study (20 seeds, bootstrap CIs)"),
+    "soh_sensitivity": (exp_soh_sensitivity, "SOH threshold sensitivity analysis"),
+    "calibration_leakage": (exp_calibration_leakage, "Calibration leakage demo on synthetic data"),
+    "ks_test": (exp_ks_test, "KS test: synthetic vs real degradation rates"),
 }
 
-EXPERIMENT_ORDER_QUICK = ["baseline", "dispatch", "composite", "market", "ablation"]
+EXPERIMENT_ORDER_QUICK = ["baseline", "dispatch", "composite", "market", "ablation", "ks_test"]
 EXPERIMENT_ORDER_FULL = ["baseline", "models", "chemistry",
                          "composite", "dispatch", "market", "ablation"]
 
 
 def main():
-    import matplotlib
-    matplotlib.use("Agg")
-
     parser = argparse.ArgumentParser(description="Extension paper experiments")
     parser.add_argument("--quick", action="store_true",
                         help="Quick mode: XGBoost only, skip DL")
