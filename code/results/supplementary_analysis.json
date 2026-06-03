@@ -1,0 +1,36 @@
+{
+  "censoring_sensitivity": {
+    "censor_0%": {
+      "macro_auc": "0.9775",
+      "fit_time_sec": 0.19,
+      "infer_time_ms": 0.42
+    },
+    "censor_10%": {
+      "macro_auc": "0.9253",
+      "fit_time_sec": 0.08,
+      "infer_time_ms": 0.59
+    },
+    "censor_30%": {
+      "macro_auc": "nan",
+      "fit_time_sec": 0.04,
+      "infer_time_ms": 0.36
+    },
+    "censor_50%": {
+      "macro_auc": "nan",
+      "fit_time_sec": 0.05,
+      "infer_time_ms": 0.45
+    }
+  },
+  "synthetic_validation": {
+    "kl_divergence_nats": 0.2193,
+    "wasserstein_distance": 0.425,
+    "real_mean_soh": 0.8345,
+    "synthetic_mean_soh": 0.4095,
+    "real_n_cells": 4,
+    "synthetic_n_cells": 20
+  },
+  "computational_cost": {
+    "train_and_infer_time_sec_N20": 0.18,
+    "peak_memory_mb": 3058
+  }
+}
