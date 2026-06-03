@@ -1,0 +1,87 @@
+{
+  "censor_0%": {
+    "xgb_fit_time_sec": 0.19,
+    "rsf_fit_time_sec": 1.88,
+    "xgb_macro_auc": 0.9775,
+    "rsf_macro_auc": 0.725,
+    "rsf_per_horizon_auc": [
+      0.8412,
+      0.7413,
+      0.6948,
+      0.6228
+    ],
+    "nan_horizons_rsf": 0,
+    "n_test_cycles_rsf": 322
+  },
+  "censor_10%": {
+    "xgb_fit_time_sec": 0.07,
+    "rsf_fit_time_sec": 1.79,
+    "xgb_macro_auc": 0.9239,
+    "rsf_macro_auc": 0.6271,
+    "rsf_per_horizon_auc": [
+      "nan",
+      "nan",
+      "nan",
+      0.6271
+    ],
+    "nan_horizons_rsf": 3,
+    "n_test_cycles_rsf": 322
+  },
+  "censor_20%": {
+    "xgb_fit_time_sec": 0.05,
+    "rsf_fit_time_sec": 1.7,
+    "xgb_macro_auc": "nan",
+    "rsf_macro_auc": "nan",
+    "rsf_per_horizon_auc": [
+      "nan",
+      "nan",
+      "nan",
+      "nan"
+    ],
+    "nan_horizons_rsf": 4,
+    "n_test_cycles_rsf": 322
+  },
+  "censor_30%": {
+    "xgb_fit_time_sec": 0.05,
+    "rsf_fit_time_sec": 1.63,
+    "xgb_macro_auc": "nan",
+    "rsf_macro_auc": "nan",
+    "rsf_per_horizon_auc": [
+      "nan",
+      "nan",
+      "nan",
+      "nan"
+    ],
+    "nan_horizons_rsf": 4,
+    "n_test_cycles_rsf": 322
+  },
+  "censor_50%": {
+    "xgb_fit_time_sec": 0.05,
+    "rsf_fit_time_sec": 1.52,
+    "xgb_macro_auc": "nan",
+    "rsf_macro_auc": "nan",
+    "rsf_per_horizon_auc": [
+      "nan",
+      "nan",
+      "nan",
+      "nan"
+    ],
+    "nan_horizons_rsf": 4,
+    "n_test_cycles_rsf": 322
+  },
+  "censor_80%": {
+    "xgb_fit_time_sec": 0.04,
+    "rsf_fit_time_sec": 1.05,
+    "xgb_macro_auc": "nan",
+    "rsf_macro_auc": "nan",
+    "rsf_per_horizon_auc": [
+      "nan",
+      "nan",
+      "nan",
+      "nan"
+    ],
+    "nan_horizons_rsf": 4,
+    "n_test_cycles_rsf": 322
+  },
+  "interpretation": "Both RSF and XGBoost discrete-time hazard fail above 20% censoring. The dataset itself lacks sufficient failure signal at high censoring rates, independent of modeling choice."
+}

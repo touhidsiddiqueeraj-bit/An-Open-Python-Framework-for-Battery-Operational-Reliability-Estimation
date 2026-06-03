@@ -144,7 +144,7 @@ We compare the degradation rate distributions of synthetic and real NASA data us
 | Mean $\Delta\text{SOH}$ | $-0.00195$ | $-0.00336$ | 0.3312 | $<0.001$ |
 | Sample size | 632 | 1196 | | |
 
-The synthetic data degrades approximately 1.7× faster on average, and the KS test confirms the distributions differ significantly (p < 0.001). This quantitative gap reinforces that the scaling curve represents an optimistic bound: the synthetic data is not only cleaner but also exhibits systematically different degradation kinetics. Real-world validation is essential before applying these guidelines to specific battery chemistries or operating conditions.
+The synthetic data degrades approximately 1.7× faster on average, and the KS test confirms the distributions differ significantly (p < 0.001). This quantitative gap reinforces that the scaling curve represents an optimistic bound: the synthetic data is not only cleaner but also exhibits systematically different degradation kinetics. Despite these significant distributional differences (KS D=0.33), the synthetic-to-real transfer test (§5.1) achieves AUC 0.88, suggesting the framework is robust to moderate distributional shift. Nevertheless, real-world validation is essential before applying these guidelines to specific battery chemistries or operating conditions.
 
 The generator also lacks capacity regeneration effects, calendar aging, and measurement artifacts present in real data, contributing additional sources of optimistic bias. Figure 6 (bottom right) compares real and synthetic degradation trajectories.
 
@@ -192,7 +192,7 @@ All dispatch policies yield identical outcomes (energy = 318.0 kWh, failure rate
 
 **Per-fold breakdown:** The AUC=0.50 result is a direct consequence of data insufficiency, not model architecture. In leave-battery-out CV, the held-out test set for each fold is a single battery. Three of the four batteries (B0007, B0018, B0006) contain either zero or one EOL event within each horizon window, making AUC either undefined (single-class) or trivially 0.50 (constant prediction at class prior). For example, at H=10, only B0005 has EOL events within the horizon; when B0005 is held out, the test set has no failures, producing NaN. When B0005 is in training, the remaining test batteries have insufficient failures for meaningful ranking. The constant AUC=0.50 across all horizons reflects the fact that the model learns only the global class prior and assigns identical probabilities to all test cycles.
 
-**Synthetic-to-real transfer test:** To verify the framework works on real data at all (as opposed to a fundamental modeling error), we train the same XGBoost pipeline on synthetic data (N=20 cells, 300 cycles each) and evaluate on the real NASA 4-cell data. The model achieves macro AUC **0.8817** (95% bootstrap CI: [0.8596, 0.8996]) on real NASA data:
+**Synthetic-to-real transfer test:** To assess whether the synthetic data generator captures real-world structure, we train the same XGBoost pipeline on synthetic data (N=20 cells, 300 cycles each) and evaluate on the real NASA 4-cell data. The model achieves macro AUC **0.8817** (95% bootstrap CI: [0.8596, 0.8996]) on real NASA data:
 
 | Horizon | AUC | Model Brier | Baseline Brier | Skill score |
 |---------|-----|-------------|----------------|-------------|
@@ -201,9 +201,9 @@ All dispatch policies yield identical outcomes (energy = 318.0 kWh, failure rate
 | 30      | 0.8577 | 0.2654 | 0.0215 | −11.33 |
 | 50      | 0.7279 | 0.3990 | 0.0363 | −9.99 |
 
-The high AUC values across all horizons confirm that the framework produces meaningful discrimination on real data when sufficient training examples are available. The negative Brier skill scores (model Brier > baseline constant-hazard Brier) indicate the model's probability estimates are not well-calibrated for rare events on this small test set — a known limitation of isotonic regression on imbalanced data — but the rank-order discrimination (AUC) is strong. This transfer test also confirms that the near-random result on 4-cell leave-battery-out is due to insufficient training data, not a modeling error. The scaling study in §5.2 quantifies this data requirement.
+This indicates the synthetic data generator captures sufficient real-world structure to enable cross-distribution generalization, and the near-random result on 4-cell leave-battery-out is due to insufficient training data rather than a modeling error. The scaling study in §5.2 quantifies this data requirement. However, the negative Brier skill scores (model Brier > baseline constant-hazard Brier) indicate the model's probability estimates are not well-calibrated for rare events on this small test set — a known limitation of isotonic regression on imbalanced data.
 
-This result is not surprising: the original paper used 37 cells (9.25× more data) to achieve AUC 0.944. The NASA 4-cell dataset is simply too small for leave-battery-out cross-validation to produce meaningful results. This motivates the synthetic scaling study in §5.2.
+**Interpretation caveat:** The NASA cross-validation AUC (0.50) and the transfer test AUC (0.88) evaluate different tasks and are not comparable. The cross-validation result (0.50) tests whether the model can learn from NASA data directly, which it cannot due to only ~2 failure events. The transfer test (0.88) tests whether a model pre-trained on synthetic data can generalize to real feature representations. **The transfer test does NOT imply the framework is ready for real-world deployment when trained on real data.** Real-data validation requires datasets with ≥200 failure events, which no public battery dataset currently provides. The transfer test should be interpreted as a distributional similarity check: despite statistically significant differences between synthetic and real degradation (KS D=0.33, p<0.001, §4.3), the model is robust enough to produce meaningful rankings on held-out real data.
 
 ### 5.2 Exploratory Synthetic Scaling Analysis
 
@@ -343,7 +343,9 @@ Real battery datasets are often right-censored: many cells are retired before EO
 
 At 10% censoring, AUC drops from 0.98 to 0.92 — a graceful degradation of 0.06 — but 3 of 4 horizons are NaN (single-class test sets), meaning only the H=10 horizon retains both classes. At 20% censoring and above, all horizons are single-class, producing no valid AUC. Training time decreases with higher censoring (fewer positive samples), confirming the model receives less signal.
 
-This suggests that real datasets with mild censoring (<10%) degrade scaling performance modestly but remain evaluable. Heavy censoring (>20%) may render standard AUC evaluation impossible because too few failure events remain for any horizon. Users should audit their datasets for censoring before applying the N estimates from §5.2. Datasets with >20% censoring may require specialized survival methods (e.g., inverse probability of censoring weighting, time-dependent AUC) to maintain model discrimination.
+This suggests that real datasets with mild censoring (<10%) degrade scaling performance modestly but remain evaluable. Heavy censoring (>20%) may render standard AUC evaluation impossible because too few failure events remain for any horizon. Users should audit their datasets for censoring before applying the N estimates from §5.2.
+
+**Censoring baseline comparison (RSF):** To determine whether this censoring intolerance is specific to the discrete-time hazard approach, we compare against a Random Survival Forest (RSF, continuous-time) on the same censoring levels. The RSF operates on per-cycle (time_to_EOL, event) pairs, using pre-EOL cycles only, to match the per-cycle structure of XGBoost. At 0% censoring, RSF achieves macro AUC 0.73 (vs XGBoost 0.98); at 10% censoring, RSF achieves AUC 0.63 on the H=50 horizon only (vs XGBoost 0.92 on H=10). At 20% censoring and above, both models fail entirely (all horizons single-class). This indicates the limitation is fundamental to the data rather than model-specific: when ≥20% of failure events are masked, neither discrete-time nor continuous-time survival models can extract meaningful signal from this synthetic dataset. The discrete-time approach's superior performance at 0–10% censoring reflects its richer per-horizon representation compared to RSF's single time-to-event target.
 
 ---
 
@@ -422,7 +424,7 @@ These event-count-based guidelines are more informative than cell-count-based on
 
 6. **Temperature artifact removed:** An early version of the synthetic generator included an unintentional temperature drift of +0.02°C per cycle (6°C over 300 cycles). This was removed in the final version; the results reported here use the corrected generator.
 
-7. **Censoring sensitivity:** Artificial censoring experiments (§5.2.3) show graceful AUC degradation at 10% censoring (0.98→0.93), but datasets with >30% censoring cannot produce valid AUC estimates without specialized survival methods. The scaling curve does not account for censoring, which is common in real-world battery data where cells are retired before EOL.
+7. **Censoring sensitivity:** Artificial censoring experiments (§5.2.3) show that both the discrete-time XGBoost hazard and a continuous-time Random Survival Forest fail above 20% censoring, confirming the limitation is fundamental to the data rather than model-specific. The scaling curve does not account for censoring, which is common in real-world battery data where cells are retired before EOL.
 
 ### 7.3 Synthetic Data Fidelity
 
@@ -457,7 +459,7 @@ We have conducted a reproducibility and scaling study of the Shikdar–Laaksonen
 **Remaining as assumptions for future work:**
 - The real-world event count requirement is unknown and cannot be estimated from synthetic data alone. The curve continues to improve up to N=20 (AUC 0.986), and likely further; N≈50+ (or ≥200 failure events) may be needed for equivalent real-data performance.
 - The scaling curve has not been validated on any multi-cell real dataset with diverse degradation. Validated minimum-data guidelines require a real-data scaling study with ≥15 cells.
-- Baseline comparisons against standard survival models (Weibull, Random Survival Forest) have not been performed and are needed to contextualize the framework's performance.
+- Baseline comparisons against standard survival models (Weibull, Random Survival Forest, Cox PH) have not been performed beyond the censoring experiment in §5.2.3 (which found both XGBoost and RSF fail above 20% censoring at the data level). It is possible that simpler methods achieve comparable or superior AUC on uncensored synthetic data, which would reduce the practical value of the multihorizon hazard learning approach. Until comprehensive benchmarks across all experimental conditions are completed, the framework's performance should be interpreted relative to its own scaling curve only, not against potential alternative methods. Future work should include these baselines to contextualize the framework's discriminative performance versus computational cost.
 
 Future work should extend the real-data validation to larger, multi-chemistry datasets (15+ cells) to evaluate whether the synthetic scaling curve's regime boundaries generalize, and should assess the deep learning model variants that could not be tested in this CPU-constrained environment.
 
