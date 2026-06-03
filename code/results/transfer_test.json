@@ -1,6 +1,10 @@
 {
   "synthetic_eval_macro_auc": 0.9775,
   "nasa_transfer_macro_auc": 0.8817,
+  "nasa_transfer_macro_auc_ci_95": [
+    0.8596,
+    0.8996
+  ],
   "nasa_per_horizon": {
     "10": {
       "auc": 0.985,

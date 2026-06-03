@@ -2,35 +2,155 @@
   "censoring_sensitivity": {
     "censor_0%": {
       "macro_auc": "0.9775",
-      "fit_time_sec": 0.19,
-      "infer_time_ms": 0.42
+      "nan_horizons": 0,
+      "fit_time_sec": 104.41,
+      "infer_time_ms": 17.98
     },
     "censor_10%": {
-      "macro_auc": "0.9253",
-      "fit_time_sec": 0.08,
-      "infer_time_ms": 0.59
+      "macro_auc": "0.9239",
+      "nan_horizons": 3,
+      "fit_time_sec": 15.86,
+      "infer_time_ms": 10.5
+    },
+    "censor_20%": {
+      "macro_auc": "nan",
+      "nan_horizons": 4,
+      "fit_time_sec": 7.24,
+      "infer_time_ms": 20.41
     },
     "censor_30%": {
       "macro_auc": "nan",
-      "fit_time_sec": 0.04,
-      "infer_time_ms": 0.36
+      "nan_horizons": 4,
+      "fit_time_sec": 8.17,
+      "infer_time_ms": 29.2
     },
     "censor_50%": {
       "macro_auc": "nan",
-      "fit_time_sec": 0.05,
-      "infer_time_ms": 0.45
+      "nan_horizons": 4,
+      "fit_time_sec": 5.07,
+      "infer_time_ms": 22.36
+    },
+    "censor_80%": {
+      "macro_auc": "nan",
+      "nan_horizons": 4,
+      "fit_time_sec": 10.33,
+      "infer_time_ms": 23.65
     }
   },
-  "synthetic_validation": {
-    "kl_divergence_nats": 0.2193,
-    "wasserstein_distance": 0.425,
-    "real_mean_soh": 0.8345,
-    "synthetic_mean_soh": 0.4095,
-    "real_n_cells": 4,
-    "synthetic_n_cells": 20
+  "per_feature_kl": {
+    "soh": {
+      "kl_divergence_nats": 0.0619,
+      "wasserstein": 0.425,
+      "real_mean": 0.8345,
+      "syn_mean": 0.4095
+    },
+    "voltage_avg": {
+      "kl_divergence_nats": 0.3311,
+      "wasserstein": 0.2018,
+      "real_mean": 3.4986,
+      "syn_mean": 3.7005
+    },
+    "current_avg": {
+      "kl_divergence_nats": 0.6025,
+      "wasserstein": 0.1673,
+      "real_mean": -1.8341,
+      "syn_mean": -2.0014
+    },
+    "temperature_avg": {
+      "kl_divergence_nats": 0.7795,
+      "wasserstein": 7.3089,
+      "real_mean": 32.3276,
+      "syn_mean": 25.0186
+    },
+    "d_soh": {
+      "kl_divergence_nats": 0.2436,
+      "wasserstein": 0.0034,
+      "real_mean": -0.0019,
+      "syn_mean": -0.0034
+    },
+    "d_capacity": {
+      "kl_divergence_nats": 0.2413,
+      "wasserstein": 0.0067,
+      "real_mean": -0.0037,
+      "syn_mean": -0.0066
+    },
+    "capacity": {
+      "kl_divergence_nats": 0.1159,
+      "wasserstein": 0.7797,
+      "real_mean": 1.5817,
+      "syn_mean": 0.8103
+    }
+  },
+  "plateau_model": {
+    "a_hat_asymptotic_auc": 1.0084,
+    "a_bootstrap_ci_95": [
+      -282.1292,
+      182.089
+    ],
+    "b_hat": 0.3307,
+    "c_hat": 0.9777,
+    "auc_at_N50": 1.0012,
+    "auc_at_N100": 1.0048,
+    "auc_at_infinity": 1.0084
+  },
+  "power_analysis": {
+    "N=2": {
+      "P(AUC>0.7)": 1.0,
+      "P(AUC>0.8)": 1.0,
+      "P(AUC>0.9)": 0.0,
+      "P(AUC>0.95)": 0.0,
+      "mean_auc": 0.8427,
+      "std_auc": 0.0068,
+      "n_seeds_valid": 20
+    },
+    "N=3": {
+      "P(AUC>0.7)": 1.0,
+      "P(AUC>0.8)": 1.0,
+      "P(AUC>0.9)": 0.25,
+      "P(AUC>0.95)": 0.0,
+      "mean_auc": 0.8912,
+      "std_auc": 0.0121,
+      "n_seeds_valid": 20
+    },
+    "N=5": {
+      "P(AUC>0.7)": 1.0,
+      "P(AUC>0.8)": 1.0,
+      "P(AUC>0.9)": 1.0,
+      "P(AUC>0.95)": 0.0,
+      "mean_auc": 0.9365,
+      "std_auc": 0.0087,
+      "n_seeds_valid": 20
+    },
+    "N=8": {
+      "P(AUC>0.7)": 1.0,
+      "P(AUC>0.8)": 1.0,
+      "P(AUC>0.9)": 1.0,
+      "P(AUC>0.95)": 1.0,
+      "mean_auc": 0.9743,
+      "std_auc": 0.0019,
+      "n_seeds_valid": 20
+    },
+    "N=12": {
+      "P(AUC>0.7)": 1.0,
+      "P(AUC>0.8)": 1.0,
+      "P(AUC>0.9)": 1.0,
+      "P(AUC>0.95)": 1.0,
+      "mean_auc": 0.9801,
+      "std_auc": 0.0012,
+      "n_seeds_valid": 20
+    },
+    "N=20": {
+      "P(AUC>0.7)": 1.0,
+      "P(AUC>0.8)": 1.0,
+      "P(AUC>0.9)": 1.0,
+      "P(AUC>0.95)": 1.0,
+      "mean_auc": 0.9862,
+      "std_auc": 0.0011,
+      "n_seeds_valid": 20
+    }
   },
   "computational_cost": {
-    "train_and_infer_time_sec_N20": 0.18,
-    "peak_memory_mb": 3058
+    "train_and_infer_time_sec_N20": 45.16,
+    "peak_memory_mb": 3003
   }
 }

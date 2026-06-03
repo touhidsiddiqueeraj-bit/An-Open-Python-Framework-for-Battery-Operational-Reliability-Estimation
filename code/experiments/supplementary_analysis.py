@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Censoring sensitivity + computational cost + synthetic validation."""
-import sys, os, json, yaml, time
+"""Supplementary analyses: extended censoring, per-feature KL, plateau model, power analysis."""
+import sys, os, json, yaml, time, glob
 import numpy as np
 os.chdir(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ".")
@@ -18,6 +18,8 @@ from src.data.synthetic import generate_synthetic_nasa
 from src.data.composite_failure import CompositeFailureLabeler
 from src.models.xgboost_hazard import XGBoostHazard
 from src.evaluation.metrics import compute_metrics
+from scipy.stats import entropy, gaussian_kde, wasserstein_distance
+from scipy.optimize import curve_fit
 
 labeler = CompositeFailureLabeler(
     soh_threshold=cfg["failure"]["soh_threshold"],
@@ -28,25 +30,31 @@ feature_cols = cfg["features"]["input_cols"] + cfg["features"]["derived_cols"]
 
 output = {}
 
-# ── 1. CENSORING SENSITIVITY ─────────────────────────
-print("=== 1. CENSORING SENSITIVITY ===")
+# ════════════════════════════════════════════════════════
+# 1. CENSORING SENSITIVITY (extended to 0-80%)
+# ════════════════════════════════════════════════════════
+print("=== 1. CENSORING SENSITIVITY (extended) ===")
 syn = generate_synthetic_nasa(n_cells=20, seed=42)
 syn = labeler.label(syn, method="single")
 X = syn[feature_cols].values.astype(np.float32)
 y = syn[horizon_cols].values.astype(np.float32)
 
-censoring_levels = [0.0, 0.1, 0.3, 0.5]
+censoring_levels = [0.0, 0.1, 0.2, 0.3, 0.5, 0.8]
 censoring_results = {}
 for cl in censoring_levels:
     y_c = y.copy()
     rng_c = np.random.default_rng(int(cl * 100))
-    # Right-censor: randomly mask the last `cl` fraction of each horizon's labels to 0
+    nan_folds = 0
     for i in range(y.shape[1]):
         n_censor = int(len(y_c) * cl)
-        idx = rng_c.choice(len(y_c), n_censor, replace=False)
-        # Only censor positive labels (batteries that have failed are removed from observation)
         pos_idx = np.where(y_c[:, i] == 1)[0]
-        censor_idx = rng_c.choice(pos_idx, min(n_censor, len(pos_idx)), replace=False)
+        if len(pos_idx) == 0:
+            nan_folds += 1
+            continue
+        n_censor = min(n_censor, len(pos_idx))
+        if n_censor == 0:
+            continue
+        censor_idx = rng_c.choice(pos_idx, n_censor, replace=False)
         y_c[censor_idx, i] = 0
 
     split = int(len(X) * 0.8)
@@ -56,62 +64,170 @@ for cl in censoring_levels:
     fit_time = time.time() - t0
 
     t0 = time.time()
-    preds = mdl.predict_proba(X[split:split + 5])  # small batch for inference time
+    _ = mdl.predict_proba(X[split:split + 5])
     infer_time = (time.time() - t0) / max(len(X[split:split + 5]), 1)
 
     preds_all = mdl.predict_proba(X[split:])
     m = compute_metrics(y_c[split:], preds_all, horizons=horizons)
     auc_val = m["macro_avg"]["auc"]
     auc_str = f"{auc_val:.4f}" if not np.isnan(auc_val) else "nan"
+    # Count NaN horizons in macro avg
+    num_nan = sum(1 for h in horizons if m["per_horizon"][h]["auc"] is None)
     censoring_results[f"censor_{cl:.0%}"] = {
         "macro_auc": auc_str,
+        "nan_horizons": num_nan,
         "fit_time_sec": round(fit_time, 2),
         "infer_time_ms": round(infer_time * 1000, 2)}
-    print(f"  Censor={cl:.0%}: macro AUC={auc_str}, "
-          f"fit={fit_time:.2f}s, infer={infer_time*1000:.2f}ms/cell")
+    print(f"  Censor={cl:.0%}: macro AUC={auc_str}, nan_horizons={num_nan}/4, "
+          f"fit={fit_time:.2f}s")
 output["censoring_sensitivity"] = censoring_results
 
-# ── 2. SYNTHETIC VALIDATION (KL divergence) ──────────
+# ════════════════════════════════════════════════════════
+# 2. PER-FEATURE KL DIVERGENCE
+# ════════════════════════════════════════════════════════
 print()
-print("=== 2. SYNTHETIC VALIDATION (KL divergence) ===")
-from scipy.stats import entropy, gaussian_kde
-
+print("=== 2. PER-FEATURE KL DIVERGENCE ===")
 loader = NASALoader(data_dir=cfg["execution"]["data_dir"])
 df_real = loader.load_classic()
 syn_val = generate_synthetic_nasa(n_cells=20, seed=42)
 
-# Compare SOH distributions
-real_soh = df_real["soh"].values
-syn_soh = syn_val["soh"].values
+all_features = ["soh", "voltage_avg", "current_avg", "temperature_avg",
+                "d_soh", "d_capacity", "capacity"]
+kl_results = {}
+for feat in all_features:
+    if feat not in df_real.columns or feat not in syn_val.columns:
+        continue
+    real_vals = df_real[feat].dropna().values
+    syn_vals = syn_val[feat].dropna().values
+    if len(real_vals) < 10 or len(syn_vals) < 10:
+        continue
+    # KL via KDE
+    try:
+        real_kde = gaussian_kde(real_vals)
+        syn_kde = gaussian_kde(syn_vals)
+        lo = max(real_vals.min(), syn_vals.min())
+        hi = min(real_vals.max(), syn_vals.max())
+        grid = np.linspace(lo, hi, 200)
+        p = real_kde(grid) + 1e-10
+        q = syn_kde(grid) + 1e-10
+        kl = entropy(p, q)
+        ws = wasserstein_distance(real_vals, syn_vals)
+        kl_results[feat] = {
+            "kl_divergence_nats": round(kl, 4),
+            "wasserstein": round(ws, 4),
+            "real_mean": round(float(real_vals.mean()), 4),
+            "syn_mean": round(float(syn_vals.mean()), 4)}
+        print(f"  {feat:20s}: KL={kl:.4f} nats, W={ws:.4f}, "
+              f"real_mean={real_vals.mean():.4f}, syn_mean={syn_vals.mean():.4f}")
+    except Exception as e:
+        print(f"  {feat:20s}: SKIP ({e})")
+output["per_feature_kl"] = kl_results
 
-# KL divergence via KDE
-real_kde = gaussian_kde(real_soh)
-syn_kde = gaussian_kde(syn_soh)
-grid = np.linspace(0.4, 1.05, 200)
-p = real_kde(grid) + 1e-10
-q = syn_kde(grid) + 1e-10
-kl_div = entropy(p, q)
-print(f"  KL divergence (real || synthetic SOH): {kl_div:.4f} nats")
-
-# Wasserstein distance
-from scipy.stats import wasserstein_distance
-ws = wasserstein_distance(real_soh, syn_soh)
-print(f"  Wasserstein distance (real vs synthetic SOH): {ws:.4f}")
-
-# Mean SOH comparison
-print(f"  Mean SOH: real={real_soh.mean():.4f}, synthetic={syn_soh.mean():.4f}")
-
-output["synthetic_validation"] = {
-    "kl_divergence_nats": round(kl_div, 4),
-    "wasserstein_distance": round(ws, 4),
-    "real_mean_soh": round(float(real_soh.mean()), 4),
-    "synthetic_mean_soh": round(float(syn_soh.mean()), 4),
-    "real_n_cells": len(df_real["cell_id"].unique()),
-    "synthetic_n_cells": 20}
-
-# ── 3. COMPUTATIONAL COST (N=20 full run) ───────────
+# ════════════════════════════════════════════════════════
+# 3. ASYMPTOTIC PLATEAU MODEL
+# ════════════════════════════════════════════════════════
 print()
-print("=== 3. COMPUTATIONAL COST ===")
+print("=== 3. ASYMPTOTIC PLATEAU MODEL ===")
+# Find the latest scaling result
+scaling_files = sorted(glob.glob(os.path.join(results_dir, "scaling_monte_carlo_*.json")))
+if scaling_files:
+    with open(scaling_files[-1]) as f:
+        scaling_data = json.load(f)
+    n_vals = np.array(scaling_data["N"])
+    auc_means = np.array(scaling_data["auc_mean"])
+
+    def plateau_model(N, a, b, c):
+        return a - b / (N ** c)
+
+    try:
+        # Fit: AUC = a - b/N^c
+        p0 = [1.0, 0.5, 0.5]
+        popt, pcov = curve_fit(plateau_model, n_vals, auc_means, p0=p0, maxfev=5000)
+        a_hat, b_hat, c_hat = popt
+        a_err = np.sqrt(pcov[0, 0]) if pcov[0, 0] > 0 else float("nan")
+
+        # Bootstrap CI for plateau estimate
+        n_boot = 1000
+        boot_a = []
+        for _ in range(n_boot):
+            idx = np.random.choice(len(auc_means), size=len(auc_means), replace=True)
+            try:
+                p, _ = curve_fit(plateau_model, n_vals, auc_means[idx], p0=p0, maxfev=2000)
+                boot_a.append(p[0])
+            except Exception:
+                continue
+        ci_lo = np.percentile(boot_a, 2.5) if len(boot_a) > 50 else float("nan")
+        ci_hi = np.percentile(boot_a, 97.5) if len(boot_a) > 50 else float("nan")
+
+        # Predict AUC at N=50
+        auc_50 = plateau_model(50, a_hat, b_hat, c_hat)
+        auc_100 = plateau_model(100, a_hat, b_hat, c_hat)
+        auc_inf = a_hat
+
+        plateau_result = {
+            "a_hat_asymptotic_auc": round(a_hat, 4),
+            "a_bootstrap_ci_95": [round(ci_lo, 4), round(ci_hi, 4)] if not np.isnan(ci_lo) else None,
+            "b_hat": round(b_hat, 4),
+            "c_hat": round(c_hat, 4),
+            "auc_at_N50": round(auc_50, 4),
+            "auc_at_N100": round(auc_100, 4),
+            "auc_at_infinity": round(auc_inf, 4),
+        }
+        print(f"  Fitted: AUC = {a_hat:.4f} - {b_hat:.4f} / N^{c_hat:.4f}")
+        print(f"  Estimated plateau (a): {a_hat:.4f} ± {a_err:.4f}")
+        if not np.isnan(ci_lo):
+            print(f"  95% CI for plateau: [{ci_lo:.4f}, {ci_hi:.4f}]")
+        print(f"  Predicted AUC at N=50: {auc_50:.4f}")
+        print(f"  Predicted AUC at N=100: {auc_100:.4f}")
+        output["plateau_model"] = plateau_result
+    except Exception as e:
+        print(f"  Plateau model fitting FAILED: {e}")
+        # Fallback: just estimate a lower bound
+        max_auc = max(auc_means)
+        print(f"  Using max observed AUC as lower bound: {max_auc:.4f}")
+        output["plateau_model"] = {"error": str(e), "max_observed_auc": max_auc}
+else:
+    print("  No scaling results found, skipping plateau model")
+
+# ════════════════════════════════════════════════════════
+# 4. POWER ANALYSIS
+# ════════════════════════════════════════════════════════
+print()
+print("=== 4. POWER ANALYSIS ===")
+if scaling_files:
+    with open(scaling_files[-1]) as f:
+        scaling_data = json.load(f)
+    n_vals = scaling_data["N"]
+    power_results = {}
+    for idx, N in enumerate(n_vals):
+        aucs = [scaling_data["per_seed"][f"seed_{s}"][str(N)]
+                for s in range(scaling_data["n_seeds"])
+                if str(N) in scaling_data["per_seed"].get(f"seed_{s}", {})]
+        aucs = [a for a in aucs if a is not None and not (isinstance(a, float) and np.isnan(a))]
+        if len(aucs) == 0:
+            continue
+        aucs = np.array(aucs)
+        for threshold in [0.7, 0.8, 0.9, 0.95]:
+            power = (aucs > threshold).mean()
+            key = f"N={N}"
+            if key not in power_results:
+                power_results[key] = {}
+            power_results[key][f"P(AUC>{threshold})"] = round(power, 4)
+        mean_auc = float(aucs.mean())
+        std_auc = float(aucs.std(ddof=1)) if len(aucs) > 1 else 0.0
+        power_results[key]["mean_auc"] = round(mean_auc, 4)
+        power_results[key]["std_auc"] = round(std_auc, 4)
+        power_results[key]["n_seeds_valid"] = len(aucs)
+        print(f"  N={N}: mean AUC={mean_auc:.4f} ± {std_auc:.4f}, "
+              f"P(>0.8)={power_results[key]['P(AUC>0.8)']:.4f}, "
+              f"P(>0.95)={power_results[key]['P(AUC>0.95)']:.4f}")
+    output["power_analysis"] = power_results
+
+# ════════════════════════════════════════════════════════
+# 5. COMPUTATIONAL COST (unchanged)
+# ════════════════════════════════════════════════════════
+print()
+print("=== 5. COMPUTATIONAL COST ===")
 syn = generate_synthetic_nasa(n_cells=20, seed=42)
 syn = labeler.label(syn, method="single")
 X_s = syn[feature_cols].values.astype(np.float32)
@@ -139,9 +255,22 @@ output["computational_cost"] = {
     "train_and_infer_time_sec_N20": round(avg_time, 2),
     "peak_memory_mb": round(peak_mb, 0)}
 
-# ── SAVE ────────────────────────────────────────────
+# ════════════════════════════════════════════════════════
+# SAVE
+# ════════════════════════════════════════════════════════
+def clean(o):
+    if isinstance(o, dict):
+        return {k: clean(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [clean(v) for v in o]
+    if isinstance(o, (np.float32, np.float64)):
+        return float(o)
+    if isinstance(o, (np.int32, np.int64)):
+        return int(o)
+    return o
+
 fp = os.path.join(results_dir, "supplementary_analysis.json")
 with open(fp, "w") as f:
-    json.dump(output, f, indent=2, default=lambda x: "nan" if isinstance(x, float) and (np.isnan(x) or np.isinf(x)) else x)
+    json.dump(clean(output), f, indent=2)
 print(f"\nSaved: {fp}")
 print("Done.")

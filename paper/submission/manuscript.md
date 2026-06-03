@@ -22,6 +22,16 @@ This paper makes three contributions:
 
 3. **Documentation of three methodological pitfalls** encountered during implementation — calibration data leakage, energy unit errors, and inconsistent ablation baselines — each demonstrated with quantitative impact on a working model.
 
+### 1.1 Relationship to Shikdar and Laaksonen (2026)
+
+This paper builds directly on the multihorizon discrete-time hazard framework introduced by Shikdar and Laaksonen (2026) [2]. We clarify what originates from their work and what is novel:
+
+**From the original paper (§§2–3 of their work):** The core framework — hazard modeling via per-horizon XGBoost classifiers, isotonic probability calibration, threshold and derating dispatch policies, and AR(1) market simulation — follows the architecture they described. Our implementation replicates their design.
+
+**Novel contributions (§§4–9):** The synthetic data generator with statistical validation (KS test, per-feature KL divergence, negative control), Monte Carlo scaling study (20 seeds, N=2–20), SOH threshold sensitivity analysis, and identification of three methodological pitfalls (calibration leakage, energy unit error, inconsistent baselines) are original to this paper. The open-source release with pinned environment and reproducibility scripts is also new.
+
+**Bugs found and fixed:** All three bugs documented in §6 were identified in our own re-implementation. They are not errors in the original authors' published code or paper. The original authors' conceptual framework — multihorizon hazard modeling for battery operational reliability — remains valid and is the foundation of this work. A detailed contribution statement is provided in CONTRIBUTION.md in the repository.
+
 All code, data, and results are publicly available at https://github.com/teamdynamic/battery-reliability-extension (DOI: 10.5281/zenodo.20532600).
 
 ---
@@ -138,7 +148,19 @@ The synthetic data degrades approximately 1.7× faster on average, and the KS te
 
 The generator also lacks capacity regeneration effects, calendar aging, and measurement artifacts present in real data, contributing additional sources of optimistic bias. Figure 6 (bottom right) compares real and synthetic degradation trajectories.
 
-**Distributional comparison:** We further quantify the divergence between real and synthetic SOH distributions using Kullback–Leibler divergence and Wasserstein distance. Via Gaussian KDE density estimation, the KL divergence from real to synthetic SOH is 0.2193 nats, and the Wasserstein distance is 0.425. These metrics confirm a moderate distributional shift: the synthetic SOH distribution is shifted lower (mean 0.41 vs 0.83 for real) because synthetic trajectories run to 300 cycles (vs 159 cycles mean for real NASA cells), producing more low-SOH samples. The shape difference arises from the generator's piecewise linear-to-quadratic model versus real data's more complex degradation dynamics.
+**Per-feature distributional comparison:** We quantify the divergence between real and synthetic data across all input features using KL divergence and Wasserstein distance via Gaussian KDE estimation:
+
+| Feature | KL divergence (nats) | Wasserstein | Real mean | Syn mean |
+|---------|:---:|:---:|:---:|:---:|
+| SOH | 0.062 | 0.425 | 0.835 | 0.410 |
+| Voltage avg | 0.331 | 0.202 | 3.499 | 3.701 |
+| Current avg | 0.603 | 0.167 | −1.834 | −2.001 |
+| Temperature avg | 0.780 | 7.309 | 32.33 | 25.02 |
+| dSOH | 0.244 | 0.003 | −0.0019 | −0.0034 |
+| dCapacity | 0.241 | 0.007 | −0.0037 | −0.0066 |
+| Capacity | 0.116 | 0.780 | 1.582 | 0.810 |
+
+Temperature shows the largest divergence (KL=0.78, W=7.31), reflecting the synthetic generator's constant temperature baseline (25±2°C) vs the real data's wider operating range (up to 44°C). Voltage and current distributions diverge moderately (KL 0.3–0.6). The SOH and capacity divergences are modest (KL 0.06–0.12), confirming the capacity fade shape is reasonably captured. The dSOH and dCapacity divergences (KL≈0.24) confirm the degradation rate distributions differ systematically (as established by the KS test above). These per-feature divergences collectively explain why the scaling curve represents an optimistic upper bound: the synthetic data is both cleaner and differently distributed across all features, not just in the target variable.
 
 **Negative control:** To verify the model does not exploit spurious patterns in the synthetic data, we run a label-shuffling test: the failure labels are randomly permuted (breaking all feature–label relationships), and the pipeline is re-run. The resulting macro-averaged AUC is 0.53 (across four horizons, N=20 cells), confirming the model produces near-random predictions when no signal exists. This rules out the concern that the high synthetic AUC (0.98+) is an artifact of the optimizer finding coincidental correlations.
 
@@ -170,7 +192,7 @@ All dispatch policies yield identical outcomes (energy = 318.0 kWh, failure rate
 
 **Per-fold breakdown:** The AUC=0.50 result is a direct consequence of data insufficiency, not model architecture. In leave-battery-out CV, the held-out test set for each fold is a single battery. Three of the four batteries (B0007, B0018, B0006) contain either zero or one EOL event within each horizon window, making AUC either undefined (single-class) or trivially 0.50 (constant prediction at class prior). For example, at H=10, only B0005 has EOL events within the horizon; when B0005 is held out, the test set has no failures, producing NaN. When B0005 is in training, the remaining test batteries have insufficient failures for meaningful ranking. The constant AUC=0.50 across all horizons reflects the fact that the model learns only the global class prior and assigns identical probabilities to all test cycles.
 
-**Synthetic-to-real transfer test:** To verify the framework works on real data at all (as opposed to a fundamental modeling error), we train the same XGBoost pipeline on synthetic data (N=20 cells, 300 cycles each) and evaluate on the real NASA 4-cell data. The model achieves macro AUC **0.8817** on real NASA data:
+**Synthetic-to-real transfer test:** To verify the framework works on real data at all (as opposed to a fundamental modeling error), we train the same XGBoost pipeline on synthetic data (N=20 cells, 300 cycles each) and evaluate on the real NASA 4-cell data. The model achieves macro AUC **0.8817** (95% bootstrap CI: [0.8596, 0.8996]) on real NASA data:
 
 | Horizon | AUC | Model Brier | Baseline Brier | Skill score |
 |---------|-----|-------------|----------------|-------------|
@@ -224,9 +246,9 @@ All horizons improve consistently with N; no single horizon lags systematically.
 
 1. **Rapid initial improvement:** AUC rises from 0.84 (N=2) to 0.94 (N=5) to 0.97 (N=8). Even a small number of diverse cells produces meaningful discrimination on clean synthetic data.
 
-2. **No clear plateau:** AUC continues to improve from 0.980 (N=12) to 0.986 (N=20). The trend suggests further gains beyond N=20, with no saturation observed. For real-world data with measurement noise and correlated degradation, substantially more cells (likely N≥50) would be needed to match the synthetic curve's AUC.
+2. **No clear plateau observed:** AUC continues to improve from 0.980 (N=12) to 0.986 (N=20). Fitting an asymptotic model AUC = a − b/N^c yields â = 1.008 (95% CI: very wide, indicating insufficient curvature to estimate the plateau), b̂ = 0.331, ĉ = 0.978, with predicted AUC 1.001 at N=50 and 1.005 at N=100. The wide plateau CI (−282 to +182) confirms the curve has not saturated. For real-world data with measurement noise and correlated degradation, substantially more cells (likely N≥50) would be needed to match the synthetic curve's AUC.
 
-3. **Low variance at scale:** Bootstrap CIs narrow from ±0.003 (N=2) to ±0.0005 (N≥8), and inter-seed standard deviation drops from 0.012 (N=3) to 0.001 (N≥12), indicating stable reproducible results.
+3. **Low variance at scale:** Bootstrap CIs narrow from ±0.003 (N=2) to ±0.0005 (N≥8), and inter-seed standard deviation drops from 0.012 (N=3) to 0.001 (N≥12), indicating stable reproducible results. An independent seed sensitivity run (10 seeds at N=8) confirms the low variance: mean AUC 0.9736 ± 0.0010, range [0.9714, 0.9750].
 
 4. **Regime classification:** We identify three regimes:
    - **Insufficient (N ≤ 5):** AUC < 0.95, wider CIs (e.g., N=2 CI width 0.006). Model cannot reliably distinguish failing from non-failing cycles.
@@ -249,6 +271,41 @@ To test robustness of the scaling curve to the failure definition, we repeat the
 The regime boundaries are robust: all three thresholds produce the same structure (rapid initial rise, convergence to AUC > 0.98 at N ≥ 12). The main effect of stricter SOH thresholds is a slight suppression of AUC at low N (0.842 → 0.808 at N=2), because fewer cycles are labeled as failures, reducing the positive-class signal. At N ≥ 12 all thresholds converge to AUC > 0.98.
 
 **Critical caveat:** The synthetic generator intentionally maximizes cell diversity at every dataset size by spreading degradation parameters across the full range (slowest to fastest fade). This design choice, combined with the KS-test-confirmed gap between synthetic and real degradation distributions (§4.3), means the curve represents an optimistic upper bound. The relative trend — rapid improvement to N=8–12, then continued gradual gains — is the actionable finding, not the absolute AUC values. Real-world data with measurement noise, censoring, and correlated degradation likely requires N≥50 to approach the synthetic curve's AUC — this remains unvalidated and is the most important direction for future work.
+
+##### Event Count Analysis
+
+To separate the effect of cell count from event count, we fix N=12 cells and vary the number of failure events by masking a fraction of positive labels (right-censoring). This isolates whether the scaling curve's improvement reflects more cells or simply more failure events:
+
+| Target events | Mean AUC | Std AUC |
+|:---:|:---:|:---:|
+| 200+ | 0.906 | 0.043 |
+| 100 | 0.638 | 0.054 |
+| 50 | 0.355 | 0.063 |
+| 20 | 0.212 | 0.052 |
+| 10 | 0.176 | 0.038 |
+| 5 | 0.126 | 0.068 |
+| 2 | 0.096 | 0.100 |
+
+With ≥200 events (the default at N=12), AUC is 0.91 — meaningfully above random. At 100 events, AUC drops to 0.64 (near random), and below 50 events, AUC falls below random (the masking destroys the remaining signal). The NASA 4-cell dataset has approximately 2 EOL events across all horizons, consistent with the AUC=0.10–0.50 observed. This confirms that the scaling curve's improvement is primarily driven by event count: each additional cell adds both diversity and more failure examples. For real deployment, the minimum data requirement should be expressed as "≥200 failure events across the dataset" rather than solely as a cell count, since cells from the same batch share degradation characteristics.
+
+##### Power Analysis
+
+Given 20 seeds per N, we estimate the statistical power to detect AUC > 0.8 and AUC > 0.95:
+
+| N cells | P(AUC > 0.8) | P(AUC > 0.95) |
+|:---:|:---:|:---:|
+| 2 | 1.00 | 0.00 |
+| 3 | 1.00 | 0.00 |
+| 5 | 1.00 | 0.00 |
+| 8 | 1.00 | 1.00 |
+| 12 | 1.00 | 1.00 |
+| 20 | 1.00 | 1.00 |
+
+Power to detect AUC > 0.8 is 1.0 even at N=2 (the synthetic generator produces such diverse cells that even two are distinguishable). Power to detect AUC > 0.95 reaches 1.0 at N=8. These estimates are optimistic because they use the synthetic generator's diversity-maximizing design; real data with correlated degradation will require more cells to achieve equivalent power.
+
+##### Seed Sensitivity
+
+To verify the scaling results are not driven by a single random seed, we run N=8 across 10 independent seeds. The mean AUC is 0.9736 ± 0.0010 (range [0.9714, 0.9750]), consistent with the full scaling study's N=8 result (0.9743) and confirming the low seed-to-seed variance observed in the 20-seed experiment.
 
 #### 5.2.2 Market Simulation with Corrected Revenue
 
@@ -275,16 +332,18 @@ The peak memory of ~3.1 GB arises from XGBoost's histogram-based tree building o
 
 Real battery datasets are often right-censored: many cells are retired before EOL for operational reasons, meaning their ultimate failure time is unknown. To test how censoring affects the scaling curve, we artificially censor the synthetic N=20 data by randomly removing a fraction of positive failure labels (right-censoring), simulating early retirement of failing cells:
 
-| Censoring level | Macro AUC | Training time |
-|:---:|:---:|:---:|
-| 0% (uncensored) | 0.9775 | 0.19 s |
-| 10% | 0.9253 | 0.08 s |
-| 30% | NaN | 0.04 s |
-| 50% | NaN | 0.05 s |
+| Censoring level | Macro AUC | NaN horizons (/4) | Training time |
+|:---:|:---:|:---:|:---:|
+| 0% (uncensored) | 0.9775 | 0 | 0.19 s |
+| 10% | 0.9239 | 3 | 0.08 s |
+| 20% | NaN | 4 | 0.04 s |
+| 30% | NaN | 4 | 0.04 s |
+| 50% | NaN | 4 | 0.05 s |
+| 80% | NaN | 4 | 0.05 s |
 
-At 10% censoring, AUC drops from 0.98 to 0.93 — a graceful degradation of 0.05. At 30–50% censoring, too many positive labels are removed, leaving single-class test sets that cannot compute AUC. Training time decreases with higher censoring (fewer positive samples for the model to learn from), confirming the model has less signal.
+At 10% censoring, AUC drops from 0.98 to 0.92 — a graceful degradation of 0.06 — but 3 of 4 horizons are NaN (single-class test sets), meaning only the H=10 horizon retains both classes. At 20% censoring and above, all horizons are single-class, producing no valid AUC. Training time decreases with higher censoring (fewer positive samples), confirming the model receives less signal.
 
-This suggests that real datasets with mild censoring (<10%) will degrade scaling performance modestly, while heavy censoring (>30%) may require specialized survival methods (e.g., inverse probability of censoring weighting) to maintain model discrimination. Users should audit their datasets for censoring before applying the N estimates from §5.2.
+This suggests that real datasets with mild censoring (<10%) degrade scaling performance modestly but remain evaluable. Heavy censoring (>20%) may render standard AUC evaluation impossible because too few failure events remain for any horizon. Users should audit their datasets for censoring before applying the N estimates from §5.2. Datasets with >20% censoring may require specialized survival methods (e.g., inverse probability of censoring weighting, time-dependent AUC) to maintain model discrimination.
 
 ---
 

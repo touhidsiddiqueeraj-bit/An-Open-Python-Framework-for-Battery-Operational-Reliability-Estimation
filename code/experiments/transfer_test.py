@@ -2,6 +2,7 @@
 """Synthetic-to-real transfer + Brier skill score + overfitting test."""
 import sys, os, json, yaml
 import numpy as np
+from scipy.stats import bootstrap
 os.chdir(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ".")
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -56,6 +57,21 @@ y_real = df_real[horizon_cols].values.astype(np.float32)
 real_preds = mdl.predict_proba(X_real)
 real_metrics = compute_metrics(y_real, real_preds, horizons=horizons)
 print(f"  NASA transfer macro AUC: {real_metrics['macro_avg']['auc']:.4f}")
+
+# Bootstrap CI for transfer AUC
+np.random.seed(2026)
+n_boot = 1000
+boot_aucs = []
+for _ in range(n_boot):
+    idx = np.random.randint(0, len(real_preds), size=len(real_preds))
+    yb = y_real[idx]
+    pb = real_preds[idx]
+    mb = compute_metrics(yb, pb, horizons=horizons)
+    boot_aucs.append(mb["macro_avg"]["auc"])
+boot_aucs = [a for a in boot_aucs if not np.isnan(a)]
+ci_lo, ci_hi = np.percentile(boot_aucs, [2.5, 97.5])
+print(f"  95% bootstrap CI for transfer macro AUC: [{ci_lo:.4f}, {ci_hi:.4f}]")
+
 for h in horizons:
     m = real_metrics["per_horizon"][h]
     print(f"    H={h}: AUC={m['auc']}, Brier={m['brier']}")
@@ -110,6 +126,7 @@ print(f"  Train-test gap: {gap:.4f} {'OK (≤0.02)' if gap <= 0.02 else 'WARNING
 output = {
     "synthetic_eval_macro_auc": syn_eval_metrics["macro_avg"]["auc"],
     "nasa_transfer_macro_auc": real_metrics["macro_avg"]["auc"],
+    "nasa_transfer_macro_auc_ci_95": [round(ci_lo, 4), round(ci_hi, 4)],
     "nasa_per_horizon": transfer_output,
     "overfitting_test": {
         "train_auc": round(tr_auc, 4),
