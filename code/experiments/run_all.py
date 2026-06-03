@@ -197,20 +197,27 @@ def exp_models(cfg):
     model_cfg = cfg["models"]["xgboost"]
     model_cfg["window_size"] = window
 
-    # XGBoost (always included)
-    cv_xgb = run_xgboost_cv(df, feature_cols, horizon_cols, window, cfg)
-    m = compute_metrics(cv_xgb["targets"], cv_xgb["predictions"], horizons=horizons)
-    results["XGBoost"] = m["macro_avg"]
-    log(f"  XGBoost: AUC={m['macro_avg']['auc']:.4f}")
+    single_model = cfg["execution"].get("model", None)
 
-    # DL models (only in --full mode, or if requested)
-    if cfg["execution"]["mode"] == "full":
+    # XGBoost (always included unless --model specified something else)
+    if single_model is None or single_model == "xgboost":
+        cv_xgb = run_xgboost_cv(df, feature_cols, horizon_cols, window, cfg)
+        m = compute_metrics(cv_xgb["targets"], cv_xgb["predictions"], horizons=horizons)
+        results["XGBoost"] = m["macro_avg"]
+        log(f"  XGBoost: AUC={m['macro_avg']['auc']:.4f}")
+
+    # DL models (only in --full mode, or when --model specifies one)
+    run_dl = (cfg["execution"]["mode"] == "full") or (single_model is not None)
+    if run_dl:
         from src.models.lstm_hazard import LSTMHazard
         from src.models.tcn_hazard import TCNHazard
         from src.models.transformer_hazard import TransformerHazard
 
+        model_map = {"lstm": "LSTM", "tcn": "TCN", "transformer": "Transformer"}
         for name, cls in [("LSTM", LSTMHazard), ("TCN", TCNHazard),
                           ("Transformer", TransformerHazard)]:
+            if single_model is not None and name.lower() != single_model:
+                continue
             log(f"  Training {name} (this will take a while on CPU)...")
             mc = cfg["models"].get(name.lower(), cfg["models"]["xgboost"])
             mc["window_size"] = window
@@ -793,6 +800,8 @@ def main():
                         help="Quick mode: XGBoost only, skip DL")
     parser.add_argument("--full", action="store_true",
                         help="Full mode: include DL models (CPU: slow)")
+    parser.add_argument("--model", type=str, default=None,
+                        help="Run a single model: xgboost, lstm, tcn, transformer")
     parser.add_argument("--expt", type=str, default=None,
                         help=f"Single experiment: {list(EXPERIMENTS.keys())}")
     parser.add_argument("--list", action="store_true",
@@ -812,6 +821,13 @@ def main():
         cfg["execution"]["mode"] = "quick"
     elif args.full:
         cfg["execution"]["mode"] = "full"
+
+    if args.model:
+        cfg["execution"]["model"] = args.model.lower()
+        cfg["execution"]["mode"] = "single_model"
+        log(f"Single model: {args.model}")
+    else:
+        cfg["execution"].pop("model", None)
 
     log(f"Mode: {cfg['execution']['mode']}")
     log(f"Data dir: {os.path.abspath(cfg['execution']['data_dir'])}")

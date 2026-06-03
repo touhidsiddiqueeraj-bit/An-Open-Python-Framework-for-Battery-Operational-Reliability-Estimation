@@ -1,0 +1,19 @@
+name: battery-reliability
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.10
+  - numpy==2.4.6
+  - pandas==3.0.3
+  - scipy==1.17.1
+  - scikit-learn==1.8.0
+  - matplotlib==3.10.9
+  - seaborn==0.13.2
+  - xgboost==3.2.0
+  - tqdm==4.67.3
+  - pyyaml==6.0.3
+  - python-docx==1.2.0
+  - pip
+  - pip:
+    - tensorflow-cpu==2.21.0
