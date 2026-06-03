@@ -1,0 +1,22 @@
+{
+  "Always dispatch": {
+    "energy": 318.0,
+    "failure_rate": 0.0063
+  },
+  "Threshold(\u03c4=0.2)": {
+    "energy": 318.0,
+    "failure_rate": 0.0063
+  },
+  "Threshold(\u03c4=0.1)": {
+    "energy": 318.0,
+    "failure_rate": 0.0063
+  },
+  "Derating(\u03b1=2)": {
+    "energy": 318.0,
+    "failure_rate": 0.0063
+  },
+  "Derating(\u03b1=5)": {
+    "energy": 318.0,
+    "failure_rate": 0.0063
+  }
+}

@@ -1,0 +1,110 @@
+# ──────────────────────────────────────────────────────────
+# Multihorizon Hazard Learning — Local Training Configuration
+# ──────────────────────────────────────────────────────────
+
+execution:
+  mode: "quick"            # 'quick' (XGBoost only) or 'full' (includes DL)
+  data_dir: "./data"
+  results_dir: "./results"
+  skip_download: false     # set true if data is already downloaded
+  seed: 42
+
+data:
+  nasa_url: "https://ti.arc.nasa.gov/tech/dash/groups/pcoe/prognostic-data-repository/battery/"
+  calce_url: "https://web.calce.umd.edu/batteries/data/"
+  nasa_mat_files:
+    - B0005.mat
+    - B0006.mat
+    - B0007.mat
+    - B0018.mat
+  download_instructions: |
+    The NASA classic dataset (B0005-B0018 .mat files) must be downloaded manually:
+    1. Visit https://data.nasa.gov and search "Battery Data Set"
+    2. Or try: https://ti.arc.nasa.gov/tech/dash/groups/pcoe/prognostic-data-repository/battery/
+    3. Place the .mat files in: ./data/raw/
+    4. The CALCE datasets will be auto-downloaded if choose_chemistries is set
+
+features:
+  window_size: 20
+  input_cols:
+    - soh
+    - voltage_avg
+    - current_avg
+    - temperature_avg
+    - cycle
+  derived_cols:
+    - d_soh
+    - d_capacity
+
+horizons: [10, 20, 30, 50]
+
+failure:
+  method: "multi"          # 'single' (soh<70) or 'multi' (composite)
+  soh_threshold: 0.70
+  resistance_threshold: 100
+  sudden_drop_threshold: 0.05
+
+models:
+  xgboost:
+    n_estimators: 300
+    max_depth: 4
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    min_child_weight: 5
+    early_stopping_rounds: 20
+
+  lstm:
+    units: [64, 32]
+    dropout: 0.2
+    recurrent_dropout: 0.2
+    epochs: 50               # reduced for CPU training
+    batch_size: 16           # reduced for memory
+    patience: 10
+    lr: 0.001
+
+  tcn:
+    filters: [32, 32]
+    kernel_size: 3
+    dilations: [1, 2, 4]
+    dropout: 0.2
+    epochs: 50
+    batch_size: 16
+    patience: 10
+    lr: 0.001
+
+  transformer:
+    d_model: 32
+    n_heads: 4
+    n_layers: 2
+    ff_dim: 64
+    dropout: 0.1
+    epochs: 50
+    batch_size: 16
+    patience: 10
+    lr: 0.001
+
+calibration:
+  method: "isotonic"
+
+dispatch:
+  default_tau: 0.2
+  tau_range: [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50]
+  derating_alpha: 2.0
+
+market:
+  n_scenarios: 200          # reduced for local
+  price_mean: 50.0
+  price_std: 15.0
+  price_ar_coeff: 0.7
+  service_energy_kwh: 0.5
+  penalty_cost: 500.0
+
+evaluation:
+  cv_folds: 5
+  metrics:
+    - auc
+    - brier
+    - ece
+    - failure_rate
+    - delivered_energy
