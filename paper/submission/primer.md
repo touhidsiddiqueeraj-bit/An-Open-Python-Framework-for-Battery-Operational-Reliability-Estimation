@@ -26,7 +26,9 @@ Per-horizon breakdown (representative seed):
 
 **Event count, not cell count:** Analysis reveals that ≥200 failure events across the dataset is the key requirement, not cell count per se. At N=12 fixed, AUC drops from 0.91 (200 events) to 0.64 (100 events) to 0.10 (2 events).
 
-**Censoring intolerance:** Both the discrete-time XGBoost and a continuous-time Random Survival Forest fail above 20% censoring — this is a data-level limitation, not model-specific.
+**RSF baseline comparison:** We compared XGBoost against a per-cycle Random Survival Forest (RSF) using the same leave-battery-out protocol. A single RSF is trained per fold; horizon risk is extracted as P(fail within H) = 1 − S(H). RSF matches XGBoost at N=2 (AUC 0.85) but plateaus at AUC ~0.82 for N≥3, while XGBoost reaches 0.99 — the multi-horizon gradient-boosted approach extracts substantially more information from clean synthetic data.
+
+**Censoring intolerance:** Both the discrete-time XGBoost and the continuous-time RSF fail above 20% censoring — this is a data-level limitation, not model-specific. Uno's cumulative/dynamic AUC (a censoring-robust metric) confirms that degradation at 10% censoring is genuine signal loss (Uno AUC drops from 0.83 to 0.56), not metric bias.
 
 On the real NASA 4-cell dataset, the model achieves per-fold macro AUC 0.50 (exactly random) — only ~2 EOL events exist across training cells. A synthetic-to-real transfer test (train N=20 synthetic, test NASA) yields AUC 0.88, indicating the synthetic generator captures real-world structure, but this does not validate real-data training.
 
@@ -55,6 +57,8 @@ While building the code, we found three mistakes that can inflate reported resul
 | AUC at N=8 (synthetic) | 0.97 |
 | AUC at N=12+ (synthetic) | > 0.98, continues to 0.99 at N=20 |
 | Real-data per-fold macro AUC | 0.50 (exactly random) |
+| RSF baseline (synthetic, N≥3) | AUC ~0.82 (plateaus; XGBoost reaches 0.99) |
+| Uno AUC at 0% censoring | 0.71–0.92 per horizon (confirms metric not biased) |
 | Transfer test (synthetic → real) | Macro AUC 0.88 — distributional overlap, NOT validation of real-data training |
 | Negative control (shuffled labels) | AUC 0.53 |
 | Min. failure events for AUC > 0.90 | ≥200 (synthetic) |

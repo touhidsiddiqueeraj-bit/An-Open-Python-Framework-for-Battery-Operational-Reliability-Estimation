@@ -177,8 +177,8 @@
   <div style="background:#1e293b; padding:15px; border-radius:12px; margin-top:10px; border-left:4px solid #fbbf24;">
   <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Key finding: event count, not cell count</strong> With N=12 fixed, AUC drops from 0.91 (200 events) to 0.64 (100 events) to 0.10 (2 events).</p>
   <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Diversity caveat:</strong> Synthetic data maximizes cell diversity at every N. Real batteries share conditions — correlated degradation reduces effective diversity.</p>
-  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Censoring intolerance:</strong> Both XGBoost and RSF fail above 20% censoring — a data-level limitation, not model-specific.</p>
-  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Baseline gap:</strong> No comprehensive comparison to Weibull, Cox, or RSF. Simpler methods may match XGBoost.</p>
+  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Censoring intolerance:</strong> Both XGBoost and RSF fail above 20% censoring — confirmed by Uno's cumulative/dynamic AUC (per-horizon, not just macro). Degradation is genuine signal loss, not metric bias.</p>
+  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; RSF baseline added:</strong> A per-cycle RSF (single model per fold, 1−S(H) horizon risk) plateaus at AUC ~0.82 for N≥3, vs XGBoost 0.99. Multi-horizon XGBoost extracts more information from clean synthetic features.</p>
   </div>
 </div>
 
@@ -227,7 +227,7 @@
   </div>
   <div style="background:#1e3a5f; border-radius:12px; padding:25px; margin:15px 0;">
     <h3 style="color:#60a5fa;">Clear limitations stated</h3>
-    <p>No baseline comparisons (Weibull, Cox, RSF). No real-data validation beyond 4 cells. Censoring intolerant above 20%. Synthetic-to-real gap confirmed (KS D=0.33). Transfer test does not validate real deployment.</p>
+    <p>RSF baseline added (plateaus at AUC ~0.82). No Cox/Weibull comparisons. No real-data validation beyond 4 cells. Censoring intolerant above 20% (confirmed by Uno AUC). Synthetic-to-real gap (KS D=0.33). Transfer test does not validate real deployment.</p>
   </div>
 </div>
 
@@ -254,8 +254,9 @@
   <h3>Current limitations</h3>
   <ul>
     <li>NASA validation limited to 4 cells (all 18,650 format, lab conditions)</li>
-    <li>No baseline comparisons against Weibull, Cox, or RSF on scaling experiment</li>
-    <li>Censoring intolerant above 20% (both XGBoost and RSF)</li>
+    <li>RSF baseline added: plateaus at AUC ~0.82 for N≥3 (vs XGBoost 0.99)</li>
+    <li>Censoring intolerant above 20% (confirmed by Uno AUC per horizon)</li>
+    <li>No Cox/Weibull comparisons</li>
     <li>No deep learning (LSTM, TCN, Transformer) — CPU-only constraints</li>
     <li>Synthetic distribution differs from real (KS D=0.33, p<0.001)</li>
     <li>Transfer test: distributional similarity check, NOT real-data validation</li>
@@ -263,7 +264,7 @@
   <h3 style="margin-top:1em;">Future work</h3>
   <ul>
     <li>Validate scaling curve on real multi-cell datasets (15+ cells)</li>
-    <li>Add baseline benchmarks (Weibull, Cox PH, RSF) for scaling comparison</li>
+    <li>Add extended baseline benchmarks (Cox PH, Weibull AFT)</li>
     <li>Add cross-chemistry validation (LFP, NMC chemistries)</li>
     <li>GPU-based deep learning comparisons</li>
     <li>Real price data instead of AR(1) simulation</li>

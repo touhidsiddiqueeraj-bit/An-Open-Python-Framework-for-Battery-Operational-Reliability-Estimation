@@ -13,6 +13,8 @@ The core framework — hazard modeling via per-horizon XGBoost classifiers, isot
 | §4 | Synthetic data generator with statistical validation (KS test vs real data), negative control experiment, and diversity-maximizing parameter scaling |
 | §5.1 | Real-data case study on NASA 4-cell dataset identifying data insufficiency and demonstrating synthetic-to-real transfer |
 | §5.2 | Monte Carlo scaling study (20 seeds, N=2–20) providing exploratory synthetic scaling analysis with bootstrap CIs and DeLong tests, establishing event count (≥200) rather than cell count as the key driver of discrimination |
+| §5.2 | Random Survival Forest (RSF) baseline comparison showing XGBoost substantially outperforms per-cycle survival modeling (RSF plateaus at AUC ~0.82 for N≥3, vs XGBoost 0.99) |
+| §5.2.3 | Censoring-robust evaluation via Uno's cumulative/dynamic AUC (per-horizon) confirming that degradation reflects genuine signal loss, not metric bias |
 | §5.2.1 | SOH threshold sensitivity analysis |
 | §6 | Identification and correction of three methodological pitfalls: calibration data leakage, energy unit error, inconsistent baselines |
 | §7–8 | Discussion of limitations and conclusions distinguishing demonstrated vs assumed results |
