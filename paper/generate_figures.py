@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Generate all 6 manuscript figures from experiment results."""
+"""Generate all 6 manuscript figures from experiment results.
+Note: Colors are selected for readability across common color vision
+deficiencies (single blue hue #1b3a5c for primary curves, RdBu_r diverging
+colormap for heatmaps, gray/muted tones for annotations)."""
 
 import os, sys, json, glob
 import numpy as np

@@ -89,9 +89,9 @@ Training on synthetic data (N=20, 300 cycles each) and evaluating on real NASA 4
 |:---:|:---:|:---:|
 | 0% | 0.9775 | 4/4 |
 | 10% | 0.9239 | 1/4 |
-| 20%+ | NaN | 0/4 |
+| >20% | NaN | 0/4 |
 
-Adds >20% label censoring renders evaluation impossible (all horizons single-class). Datasets with heavy censoring require survival-specific methods.
+>20% label censoring renders evaluation impossible (all horizons single-class). Datasets with heavy censoring require survival-specific methods.
 
 ## Event Count Analysis
 

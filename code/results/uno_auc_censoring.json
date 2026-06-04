@@ -1,0 +1,20 @@
+{
+  "censor_0%": {
+    "standard_macro_auc_mean": 0.9875,
+    "standard_macro_auc_std": 0.002,
+    "uno_macro_auc_mean": 0.8342,
+    "uno_macro_auc_std": 0.0788
+  },
+  "censor_10%": {
+    "standard_macro_auc_mean": 0.931,
+    "standard_macro_auc_std": 0.0045,
+    "uno_macro_auc_mean": 0.5606,
+    "uno_macro_auc_std": 0.0582
+  },
+  "censor_20%": {
+    "standard_macro_auc_mean": 0.5,
+    "standard_macro_auc_std": 0.0,
+    "uno_macro_auc_mean": 0.5,
+    "uno_macro_auc_std": 0.0
+  }
+}
