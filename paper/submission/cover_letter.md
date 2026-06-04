@@ -20,7 +20,7 @@ This paper presents a complete open-source Python implementation of the multihor
 
 While the Shikdar–Laaksonen framework achieved AUC 0.944 on 37 cells, most public benchmarks (e.g., NASA PCoE) contain only 4 cells. Our evaluation on NASA 4-cell data yields per-fold macro AUC 0.50 (exactly random), confirming the dataset is too small for this method. Our exploratory scaling analysis quantifies the data requirement as ≥200 failure events (synthetic), providing the community with a provisional target for battery aging studies. Real-data validation requires ≥15 cells.
 
-We have verified all 19 references against publisher websites (Wiley, Elsevier, MDPI, NASA repository) — none are hallucinated. The complete source code, configuration, experimental results, documentation, and slide deck are publicly available at https://github.com/touhidsiddiqueeraj-bit/An-Open-Python-Framework-for-Battery-Operational-Reliability-Estimation. The environment is pinned for reproducibility via `requirements.txt` and `environment.yml`, including the `scikit-survival` dependency required for the RSF baseline and Uno AUC experiments.
+We have verified all 14 references against publisher websites (Wiley, Elsevier, MDPI, NASA repository) — none are hallucinated. The complete source code, configuration, experimental results, documentation, and slide deck are publicly available at https://github.com/touhidsiddiqueeraj-bit/An-Open-Python-Framework-for-Battery-Operational-Reliability-Estimation. The environment is pinned for reproducibility via `requirements.txt` and `environment.yml`, including the `scikit-survival` dependency required for the RSF baseline and Uno AUC experiments.
 
 ## Prior Review
 

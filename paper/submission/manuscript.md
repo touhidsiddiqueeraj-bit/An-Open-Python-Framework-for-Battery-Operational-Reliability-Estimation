@@ -135,7 +135,7 @@ Cell-specific parameters are scaled across the population to ensure diversity at
 - **EOL point:** $\text{EOL}_i = 80 + 140 \cdot \frac{i}{N-1}$ cycles, ensuring EOL events are spread across the cycle range
 - **Initial capacity:** $C_0 = 2.0 \pm 0.1$ Ah, sampled uniformly per cell
 
-This scaling ensures that small datasets (N=2) still contain diverse trajectories, while larger datasets add progressively more extreme examples. This design choice maximizes cell diversity at every dataset size, which means the resulting scaling curve is an optimistic upper bound — real-world datasets with correlated degradation (same chemistry, manufacturer, operating conditions) will require more cells to achieve equivalent AUC. The chosen piecewise linear-to-quadratic fade model (§4.1) follows the battery degradation modeling literature [16, 19] but is not validated against specific chemistries beyond the NASA dataset.
+This scaling ensures that small datasets (N=2) still contain diverse trajectories, while larger datasets add progressively more extreme examples. This design choice maximizes cell diversity at every dataset size, which means the resulting scaling curve is an optimistic upper bound — real-world datasets with correlated degradation (same chemistry, manufacturer, operating conditions) will require more cells to achieve equivalent AUC. The chosen piecewise linear-to-quadratic fade model (§4.1) follows the battery degradation modeling literature [13, 14] but is not validated against specific chemistries beyond the NASA dataset.
 
 ### 4.3 Quantitative Comparison with Real Data
 
@@ -476,7 +476,7 @@ The synthetic generator produces clean trajectories that match the qualitative s
 
 The scaling curve should therefore be interpreted as a best-case bound. Real-world implementations should budget for additional data to account for this gap.
 
-A concrete illustration: the scaling curve reports AUC 0.84 at N=2. This is achievable on synthetic data because the generator intentionally maximizes cell-to-cell diversity —— two synthetic cells at N=2 are drawn from the slowest and fastest ends of the degradation parameter range. Real-world N=2 draws from the same population typically produce correlated trajectories, yielding much lower discrimination. The N=2 synthetic AUC should not be interpreted as a realistic baseline; it is an artifact of the diversity-maximization design.
+A concrete illustration: the scaling curve reports AUC 0.84 at N=2. This is achievable on synthetic data because the generator intentionally maximizes cell-to-cell diversity — two synthetic cells at N=2 are drawn from the slowest and fastest ends of the degradation parameter range. Real-world N=2 draws from the same population typically produce correlated trajectories, yielding much lower discrimination. The N=2 synthetic AUC should not be interpreted as a realistic baseline; it is an artifact of the diversity-maximization design.
 
 ---
 
@@ -558,16 +558,6 @@ All source code, configuration files, experimental results, and documentation ar
 
 [12] B. Efron and R. J. Tibshirani, *An Introduction to the Bootstrap*, Chapman & Hall, 1993.
 
-[13] Q. Wang, M. Ye, X. Cai, D. U. Sauer, and W. Li, "Transferable Data-Driven Capacity Estimation for Lithium-Ion Batteries with Deep Learning: A Case Study from Laboratory to Field Applications," *Applied Energy*, vol. 350, p. 121747, 2023, doi: 10.1016/j.apenergy.2023.121747.
+[13] P. Fermín-Cueto, E. McTurk, M. Allerhand, E. Medina-Lopez, M. F. Anjos, J. Sylvester, and G. dos Reis, "Identification and Machine Learning Prediction of Knee-Point and Knee-Onset in Capacity Degradation Curves of Lithium-Ion Cells," *Energy and AI*, vol. 1, p. 100006, 2020, doi: 10.1016/j.egyai.2020.100006.
 
-[14] M. Li, et al., "State of Health Estimation and Battery Management: A Review of Health Indicators, Models and Machine Learning," *Materials*, vol. 18, no. 1, p. 145, 2025, doi: 10.3390/ma18010145.
-
-[15] J. Zhu, et al., "Data-driven capacity estimation of commercial lithium-ion batteries from voltage relaxation," *Nature Communications*, vol. 13, p. 2261, 2022, doi: 10.1038/s41467-022-29837-0.
-
-[16] P. Fermín-Cueto, E. McTurk, M. Allerhand, E. Medina-Lopez, M. F. Anjos, J. Sylvester, and G. dos Reis, "Identification and Machine Learning Prediction of Knee-Point and Knee-Onset in Capacity Degradation Curves of Lithium-Ion Cells," *Energy and AI*, vol. 1, p. 100006, 2020, doi: 10.1016/j.egyai.2020.100006.
-
-[17] T. Lombardo, et al., "Artificial Intelligence Applied to Battery Research: Hype or Reality?" *Chemical Reviews*, vol. 122, no. 14, pp. 12373--12410, 2022, doi: 10.1021/acs.chemrev.1c00108.
-
-[18] M. Aykol, et al., "The quest for an intelligent battery: A perspective on artificial intelligence and machine learning for batteries," *Joule*, vol. 5, no. 11, pp. 2788--2805, 2021, doi: 10.1016/j.joule.2021.09.005.
-
-[19] G. dos Reis, et al., "Lithium-ion battery degradation: a comprehensive review of data-driven approaches," *Energy and AI*, vol. 12, p. 100245, 2023, doi: 10.1016/j.egyai.2023.100245.
+[14] G. dos Reis, et al., "Lithium-ion battery degradation: a comprehensive review of data-driven approaches," *Energy and AI*, vol. 12, p. 100245, 2023, doi: 10.1016/j.egyai.2023.100245.
