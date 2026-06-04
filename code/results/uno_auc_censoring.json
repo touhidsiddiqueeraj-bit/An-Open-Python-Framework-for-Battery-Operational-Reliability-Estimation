@@ -1,20 +1,116 @@
 {
   "censor_0%": {
-    "standard_macro_auc_mean": 0.9875,
-    "standard_macro_auc_std": 0.002,
-    "uno_macro_auc_mean": 0.8342,
-    "uno_macro_auc_std": 0.0788
+    "standard_auc_per_horizon": {
+      "H=10": {
+        "mean": 0.9968,
+        "std": 0.001
+      },
+      "H=20": {
+        "mean": 0.9874,
+        "std": 0.0023
+      },
+      "H=30": {
+        "mean": 0.9785,
+        "std": 0.0045
+      },
+      "H=50": {
+        "mean": 0.9873,
+        "std": 0.0022
+      }
+    },
+    "uno_auc_per_horizon": {
+      "H=10": {
+        "mean": 0.7059,
+        "std": 0.1127
+      },
+      "H=20": {
+        "mean": 0.8027,
+        "std": 0.1245
+      },
+      "H=30": {
+        "mean": 0.9102,
+        "std": 0.0816
+      },
+      "H=50": {
+        "mean": 0.9181,
+        "std": 0.0631
+      }
+    }
   },
   "censor_10%": {
-    "standard_macro_auc_mean": 0.931,
-    "standard_macro_auc_std": 0.0045,
-    "uno_macro_auc_mean": 0.5606,
-    "uno_macro_auc_std": 0.0582
+    "standard_auc_per_horizon": {
+      "H=10": {
+        "mean": NaN,
+        "std": NaN
+      },
+      "H=20": {
+        "mean": NaN,
+        "std": NaN
+      },
+      "H=30": {
+        "mean": NaN,
+        "std": NaN
+      },
+      "H=50": {
+        "mean": 0.931,
+        "std": 0.0045
+      }
+    },
+    "uno_auc_per_horizon": {
+      "H=10": {
+        "mean": 0.5,
+        "std": 0.0
+      },
+      "H=20": {
+        "mean": 0.5,
+        "std": 0.0
+      },
+      "H=30": {
+        "mean": 0.5,
+        "std": 0.0
+      },
+      "H=50": {
+        "mean": 0.7423,
+        "std": 0.2326
+      }
+    }
   },
   "censor_20%": {
-    "standard_macro_auc_mean": 0.5,
-    "standard_macro_auc_std": 0.0,
-    "uno_macro_auc_mean": 0.5,
-    "uno_macro_auc_std": 0.0
+    "standard_auc_per_horizon": {
+      "H=10": {
+        "mean": NaN,
+        "std": NaN
+      },
+      "H=20": {
+        "mean": NaN,
+        "std": NaN
+      },
+      "H=30": {
+        "mean": NaN,
+        "std": NaN
+      },
+      "H=50": {
+        "mean": NaN,
+        "std": NaN
+      }
+    },
+    "uno_auc_per_horizon": {
+      "H=10": {
+        "mean": 0.5,
+        "std": 0.0
+      },
+      "H=20": {
+        "mean": 0.5,
+        "std": 0.0
+      },
+      "H=30": {
+        "mean": 0.5,
+        "std": 0.0
+      },
+      "H=50": {
+        "mean": 0.5,
+        "std": 0.0
+      }
+    }
   }
 }

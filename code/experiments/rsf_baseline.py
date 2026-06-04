@@ -108,6 +108,10 @@ for N in n_vals:
                 rsf_fold_aucs.append(np.nan)
                 continue
 
+            # Single RSF model per fold (not per horizon): extract horizon-specific
+            # failure probabilities from the survival function as P(fail within H) = 1 - S(H).
+            # This is the canonical method for multi-horizon risk from a single
+            # continuous-time survival model.
             rsf = RandomSurvivalForest(
                 n_estimators=200, min_samples_leaf=10, max_depth=6,
                 random_state=42, n_jobs=2)
@@ -115,7 +119,7 @@ for N in n_vals:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 rsf.fit(train_X_rsf, rsf_target)
-
+ 
             # Per-cycle RSF prediction on test fold
             rsf_h_aucs = []
             for H in horizons:

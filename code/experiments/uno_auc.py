@@ -39,8 +39,8 @@ output = {}
 
 for cl in censoring_levels:
     cl_key = f"censor_{int(cl*100)}%"
-    std_aucs = []
-    uno_aucs = []
+    std_aucs = {h: [] for h in horizons}
+    uno_aucs = {h: [] for h in horizons}
 
     for seed in range(n_seeds):
         np.random.seed(seed)
@@ -70,12 +70,11 @@ for cl in censoring_levels:
         mdl.fit(X[:split], y[:split], X[split:], y[split:])
         preds = mdl.predict_proba(X[split:])
 
-        # Standard AUC
+        # Standard AUC per horizon
         m = compute_metrics(y[split:], preds, horizons=horizons)
-        std_macro = m["macro_avg"]["auc"]
-        if np.isnan(std_macro):
-            std_macro = 0.5
-        std_aucs.append(std_macro)
+        for h_idx, H in enumerate(horizons):
+            auc_val = m["per_horizon"][H]["auc"]
+            std_aucs[H].append(auc_val if auc_val is not None else np.nan)
 
         # Uno's cumulative dynamic AUC
         # Build survival data for train and test splits (aligned with risk scores)
@@ -122,36 +121,50 @@ for cl in censoring_levels:
                 test_risk[h_idx].append(preds[i - split, h_idx])
 
         # Compute Uno AUC at each horizon
-        fold_uno = []
         for h_idx, H in enumerate(horizons):
             risk_scores = np.array(test_risk[h_idx])
             if len(np.unique(test_events)) < 2:
-                fold_uno.append(np.nan)
+                uno_aucs[H].append(np.nan)
                 continue
             try:
-                uno_auc, _ = cumulative_dynamic_auc(
+                uno_val, _ = cumulative_dynamic_auc(
                     surv_train, surv_test, risk_scores, [float(H)])
-                fold_uno.append(uno_auc[0])
+                uno_aucs[H].append(uno_val[0])
             except Exception:
-                fold_uno.append(np.nan)
-
-        uno_aucs.append(np.nanmean(fold_uno) if not np.all(np.isnan(fold_uno)) else np.nan)
+                uno_aucs[H].append(np.nan)
 
     output[cl_key] = {
-        "standard_macro_auc_mean": round(float(np.nanmean(std_aucs)), 4),
-        "standard_macro_auc_std": round(float(np.nanstd(std_aucs, ddof=1)), 4),
-        "uno_macro_auc_mean": round(float(np.nanmean(uno_aucs)), 4),
-        "uno_macro_auc_std": round(float(np.nanstd(uno_aucs, ddof=1)), 4),
+        "standard_auc_per_horizon": {
+            f"H={H}": {
+                "mean": round(float(np.nanmean(std_aucs[H])), 4),
+                "std": round(float(np.nanstd(std_aucs[H], ddof=1)), 4)
+            } for H in horizons
+        },
+        "uno_auc_per_horizon": {
+            f"H={H}": {
+                "mean": round(float(np.nanmean(uno_aucs[H])), 4),
+                "std": round(float(np.nanstd(uno_aucs[H], ddof=1)), 4)
+            } for H in horizons
+        },
     }
 
 out_path = os.path.join(results_dir, "uno_auc_censoring.json")
 with open(out_path, "w") as f:
     json.dump(output, f, indent=2)
 
-# Print compact comparison
-print(f"{'Censoring':>10} {'Std AUC':>10} {'Uno AUC':>10}")
-print("-" * 35)
+# Print compact comparison table
+print(f"{'Censoring':>10} {'Metric':>8}", end="")
+for H in horizons:
+    print(f" {'H='+str(H):>10}", end="")
+print()
+
 for cl in censoring_levels:
     cl_key = f"censor_{int(cl*100)}%"
     d = output[cl_key]
-    print(f"{cl_key:>10} {d['standard_macro_auc_mean']:.4f}±{d['standard_macro_auc_std']:.4f} {d['uno_macro_auc_mean']:.4f}±{d['uno_macro_auc_std']:.4f}")
+    for metric, label in [("standard_auc_per_horizon", "Std AUC"),
+                          ("uno_auc_per_horizon", "Uno AUC")]:
+        print(f"{cl_key:>10} {label:>8}", end="")
+        for H in horizons:
+            v = d[metric][f"H={H}"]
+            print(f" {v['mean']:.4f}±{v['std']:.4f}", end="")
+        print()
