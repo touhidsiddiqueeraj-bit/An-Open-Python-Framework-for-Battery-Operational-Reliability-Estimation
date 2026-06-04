@@ -59,11 +59,14 @@ battery_paper/
 ├── environment.yml          # Conda environment with pinned deps
 ├── requirements-exact.txt   # Pip alternatives with pinned versions
 ├── reproduce.sh             # One-command reproduction script
+├── docs/
+│   ├── primer.md             # Quick primer
+│   ├── submission_primer.md  # Primer copy for submission
+│   ├── presentation.html     # Slide deck
+│   └── submission_presentation.html  # Slide deck copy for submission
 └── paper/
     ├── manuscript.md         # Full paper
     ├── Extension_Paper.docx  # Formatted Word document
-    ├── presentation.html     # Slide deck
-    ├── primer.md             # Quick primer
     ├── figures/              # 9 publication-quality figures
     └── submission/           # Final copies for submission
 ```
