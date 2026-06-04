@@ -1,0 +1,55 @@
+{
+  "xgb": {
+    "N=2": {
+      "mean": 0.8444,
+      "std": 0.0055
+    },
+    "N=3": {
+      "mean": 0.8963,
+      "std": 0.0119
+    },
+    "N=5": {
+      "mean": 0.9471,
+      "std": 0.0084
+    },
+    "N=8": {
+      "mean": 0.9805,
+      "std": 0.0021
+    },
+    "N=12": {
+      "mean": 0.9869,
+      "std": 0.001
+    },
+    "N=20": {
+      "mean": 0.9917,
+      "std": 0.001
+    }
+  },
+  "rsf": {
+    "N=2": {
+      "mean": 0.8475,
+      "std": 0.0276
+    },
+    "N=3": {
+      "mean": 0.8232,
+      "std": 0.0247
+    },
+    "N=5": {
+      "mean": 0.8253,
+      "std": 0.0132
+    },
+    "N=8": {
+      "mean": 0.821,
+      "std": 0.0152
+    },
+    "N=12": {
+      "mean": 0.7969,
+      "std": 0.0173
+    },
+    "N=20": {
+      "mean": 0.7944,
+      "std": 0.0147
+    }
+  },
+  "interpretation": "RSF matches XGBoost at N=2 (0.8475 vs 0.8444) but plateaus at AUC ~0.82 for N>=3, while XGBoost continues to improve monotonically to 0.99. XGBoost multi-horizon classification substantially outperforms per-cycle RSF survival function extraction on this synthetic data."
+}

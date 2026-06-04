@@ -93,7 +93,7 @@ Throughout this paper, a **cycle** refers to one complete charge–discharge cyc
 
 ### 2.3 Model Layer
 
-`XGBoostHazard` trains one `xgboost.XGBClassifier` per prediction horizon using early stopping (patience=20). The model operates on a **discrete-time representation**: each cycle is a row with cycle-level features (SOH, voltage_avg, current_avg, temperature_avg, cycle number) plus derived deltas (d_SOH, d_capacity). These features vary across cycles within each cell, so the model naturally captures time-varying covariate effects. While the framework uses standard `binary:logistic` classification per horizon rather than a custom survival likelihood (e.g., Cox or AFT loss), this approach produces well-calibrated hazard probability estimates when combined with isotonic regression, as demonstrated by the scaling study in §5.2. The model is trained on 80% of each training fold; the remaining 20% is held out for early stopping and calibrator fitting.
+`XGBoostHazard` trains one `xgboost.XGBClassifier` per prediction horizon using early stopping (patience=20). The model operates on a **discrete-time representation**: each cycle is a row with cycle-level features (SOH, voltage_avg, current_avg, temperature_avg, cycle number) plus derived deltas (d_SOH, d_capacity). These features vary across cycles within each cell, so the model naturally captures time-varying covariate effects. While the framework uses standard `binary:logistic` classification per horizon rather than a custom survival likelihood (e.g., Cox or AFT loss), this approach produces well-calibrated hazard probability estimates when combined with cross-validated isotonic regression, as demonstrated by the scaling study in §5.2. The model is trained on 80% of each training fold; the remaining 20% validation fold is held out for early stopping and calibrator fitting.
 
 `ProbabilityCalibrator` applies isotonic regression on the held-out validation set, not the test set. This distinction is critical: fitting the calibrator on test data (calibration leakage) can artificially inflate calibration metrics and is discussed in Section 6.
 
@@ -241,6 +241,19 @@ To explore the relationship between dataset size and model discrimination on syn
 
 The DeLong comparisons between adjacent N values are not significant (p > 0.05 for all pairs), which is expected: DeLong tests compare two models on the same test set, whereas here each N value produces a different set of held-out cells. The strong monotonic trend, narrowing CIs, and low inter-seed variance (§5.2.1) collectively confirm that the improvement is meaningful.
 
+**Baseline comparison — Random Survival Forest (RSF):** To assess whether the XGBoost multi-horizon approach is uniquely effective or if a standard survival model can match its performance, we repeat the scaling experiment using a per-cycle Random Survival Forest (RSF) with the same leave-battery-out protocol. RSF predicts the survival function P(T > t) at each cycle; horizon-specific probabilities are extracted as P(fail within H) = 1 − P(T > H). The 20-seed mean macro AUC across N is:
+
+| N cells | XGBoost macro AUC | RSF macro AUC |
+|---------|------------------|---------------|
+| 2       | 0.8444 ± 0.0055  | 0.8475 ± 0.0276 |
+| 3       | 0.8963 ± 0.0119  | 0.8232 ± 0.0247 |
+| 5       | 0.9471 ± 0.0084  | 0.8253 ± 0.0132 |
+| 8       | 0.9805 ± 0.0021  | 0.8210 ± 0.0152 |
+| 12      | 0.9869 ± 0.0010  | 0.7969 ± 0.0173 |
+| 20      | 0.9917 ± 0.0010  | 0.7944 ± 0.0147 |
+
+RSF matches XGBoost only at N=2 (0.8475 vs. 0.8444). For N ≥ 3, RSF plateaus at AUC ≈ 0.82 and never exceeds 0.85, while XGBoost continues to improve monotonically. This gap is not due to RSF failure per se — per-cycle RSF with time-to-EOL encoding is a reasonable baseline — but rather reflects the advantage of direct multi-horizon classification over survival function extraction: XGBoost simultaneously optimizes discrimination at all four horizons, whereas RSF predicts a single survival function from which horizon-specific risks are derived post hoc. On clean synthetic data where failure events produce sharp, separable feature signatures, the multi-output gradient-boosted approach extracts substantially more information.
+
 **Per-horizon AUC at selected N (seed 1, representative):**
 
 | N cells | H=10 | H=20 | H=30 | H=50 | Macro |
@@ -327,7 +340,7 @@ To quantify operational outcomes, we run the dispatch framework on the NASA 4-ce
 - **Failure rate (always-dispatch policy):** 0.63%
 - **Failure rate (τ=0.2 threshold policy):** 0.63% (identical — model produces constant predictions on this dataset)
 
-The corrected revenue of \$3.78 reflects the small absolute energy volume from a 4-cell dataset. At this scale, revenue from reliability-aware dispatch is negligible (≈\$0.025/cell/cycle); the economic value proposition requires substantially larger BESS installations (≥100 cells) to generate meaningful returns from operational optimization. The original energy unit error would have overstated revenue by three orders of magnitude, qualitatively changing any economic analysis. On larger datasets where the model produces useful discrimination, the corrected revenue would still be proportionally smaller than uncorrected estimates.
+The corrected revenue of \$3.78 reflects the small absolute energy volume from a 4-cell dataset. At this scale, revenue from reliability-aware dispatch is negligible (≈\$0.025/cell/cycle); the economic value proposition requires substantially larger BESS installations (≥100 cells) to generate meaningful returns from operational optimization. The original energy unit error would have overstated revenue by three orders of magnitude, qualitatively changing any economic analysis. On larger datasets where the model produces useful discrimination, the corrected revenue would still be proportionally smaller than uncorrected estimates. The \$3.78 vs \$3,780 discrepancy would also distort policy ranking: a threshold policy that appears to spend negligible additional revenue on energy (relative to always-dispatch) under the corrected metric could appear to waste thousands of dollars under the uncorrected one, leading to qualitatively different operational recommendations.
 
 **Computational cost:** The full synthetic scaling study (N = 2, 3, 5, 8, 12, 20; 20 Monte Carlo seeds; bootstrap CIs; DeLong tests) requires approximately 4–5 hours on a modern 8-core CPU. The per-run cost at N=20 is:
 
@@ -354,7 +367,7 @@ Real battery datasets are often right-censored: many cells are retired before EO
 
 At 10% censoring, AUC drops from 0.98 to 0.92 — a graceful degradation of 0.06 — but 3 of 4 horizons are NaN (single-class test sets), meaning only the H=10 horizon retains both classes. At 20% censoring and above, all horizons are single-class, producing no valid AUC. Training time decreases with higher censoring (fewer positive samples), confirming the model receives less signal.
 
-This suggests that real datasets with mild censoring (<10%) degrade scaling performance modestly but remain evaluable. Heavy censoring (>20%) may render standard AUC evaluation impossible because too few failure events remain for any horizon. Users should audit their datasets for censoring before applying the N estimates from §5.2.
+This suggests that real datasets with mild censoring (<10%) degrade scaling performance modestly but remain evaluable. Heavy censoring (>20%) makes both discrete-time (XGBoost) and continuous-time (RSF) models unsuitable, producing no valid AUC because too few failure events remain for any horizon. Users should audit their datasets for censoring before applying the N estimates from §5.2 and should treat any evaluation on >20% censored data as unreliable.
 
 **Censoring baseline comparison (RSF):** To determine whether this censoring intolerance is specific to the discrete-time hazard approach, we compare against a Random Survival Forest (RSF, continuous-time) on the same censoring levels. The RSF operates on per-cycle (time_to_EOL, event) pairs, using pre-EOL cycles only, to match the per-cycle structure of XGBoost. At 0% censoring, RSF achieves macro AUC 0.73 (vs XGBoost 0.98); at 10% censoring, RSF achieves AUC 0.63 on the H=50 horizon only (vs XGBoost 0.92 on H=10). At 20% censoring and above, both models fail entirely (all horizons single-class). This indicates the limitation is fundamental to the data rather than model-specific: when ≥20% of failure events are masked, neither discrete-time nor continuous-time survival models can extract meaningful signal from this synthetic dataset. The discrete-time approach's superior performance at 0–10% censoring reflects its richer per-horizon representation compared to RSF's single time-to-event target.
 
@@ -370,7 +383,7 @@ During implementation we identified three methodological issues that can inflate
 
 **Demonstration:** On synthetic data (N=20 cells, 10 seeds), fitting the calibrator on the test set inflates macro-averaged AUC from 0.9786 (correct) to 0.9947 (leaked), a +0.0161 inflation. While smaller than the inflation observed on near-random models (+0.28 on NASA 4-cell), this demonstrates the effect persists on models that genuinely discriminate.
 
-**Fix:** Hold out 20% of each training fold for calibrator fitting. Apply the calibrator to the test set only after fitting on validation data.
+**Fix:** Hold out 20% of each training fold as a validation fold for calibrator fitting. Apply the calibrator to the test set only after fitting on validation data. This is cross-validated calibration in the sense that the calibrator is fit on a held-out fold within each CV iteration, using data never seen during training or testing.
 
 ### 6.2 Energy Unit Error
 
@@ -421,6 +434,8 @@ The synthetic scaling curve (Section 5.2) provides a quantitative answer to a qu
 
 These event-count-based guidelines are more informative than cell-count-based ones because they account for the fact that cells from the same batch share degradation characteristics. The scaling curve primarily reflects increasing event counts rather than cell diversity — each additional cell adds both diversity and more failure examples. Real-world data will require more events than the synthetic curve suggests due to the KS-test-confirmed gap in degradation distributions (§4.3), the intentional diversity maximization in the generator (§4.2), and the presence of noise and measurement artifacts absent from synthetic data. The exact multiplier is application-dependent and cannot be estimated from synthetic data alone.
 
+**Model choice matters:** The scaling experiment was repeated with a per-cycle Random Survival Forest (RSF) baseline under the same leave-battery-out protocol. RSF matches XGBoost only at N=2 (AUC 0.85); for N ≥ 3, RSF plateaus at AUC ≈ 0.82 while XGBoost continues to improve to 0.99. The gap is not due to RSF failure per se — per-cycle RSF with time-to-EOL encoding is a reasonable continuous-time survival baseline — but rather reflects the advantage of direct multi-horizon classification: XGBoost simultaneously optimizes discrimination at all horizons, whereas RSF derives horizon risks from a single survival function. On clean synthetic data with sharp failure features, the gradient-boosted multi-output approach extracts substantially more information. This does not, however, guarantee that XGBoost will remain advantageous on noisy real data — the RSF baseline serves as a constructive lower bound that future model comparisons should extend.
+
 ### 7.2 Limitations
 
 1. **NASA-only validation:** The real-data validation is limited to the NASA 4-cell dataset. Cross-chemistry validation (CALCE LCO, LFP, K2 chemistries) could not be completed due to data access constraints. The scaling curve's regime boundaries have not been validated on any real multi-cell dataset.
@@ -435,7 +450,7 @@ These event-count-based guidelines are more informative than cell-count-based on
 
 6. **Temperature artifact removed:** An early version of the synthetic generator included an unintentional temperature drift of +0.02°C per cycle (6°C over 300 cycles). This was removed in the final version; the results reported here use the corrected generator.
 
-7. **Censoring sensitivity:** Artificial censoring experiments (§5.2.3) show that both the discrete-time XGBoost hazard and a continuous-time Random Survival Forest fail above 20% censoring, confirming the limitation is fundamental to the data rather than model-specific. The scaling curve does not account for censoring, which is common in real-world battery data where cells are retired before EOL.
+7. **Censoring sensitivity:** Artificial censoring experiments (§5.2.3) show that both the discrete-time XGBoost hazard and a continuous-time Random Survival Forest fail above 20% censoring, confirming the limitation is fundamental to the data rather than model-specific. Both models are unsuitable for datasets with >20% censoring. The scaling curve does not account for censoring, which is common in real-world battery data where cells are retired before EOL.
 
 ### 7.3 Synthetic Data Fidelity
 

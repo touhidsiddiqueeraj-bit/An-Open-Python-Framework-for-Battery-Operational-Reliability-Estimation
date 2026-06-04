@@ -19,6 +19,7 @@ Open-source Python implementation of the Shikdar–Laaksonen (2026) multihorizon
 | Energy unit error | 1000× revenue overstatement (corrected in §6.2) |
 | Negative control (shuffled labels) | AUC **0.53** — model does not find spurious patterns |
 | Censoring sensitivity | 10% censoring → AUC drops 0.98→0.92; ≥20% → all horizons single-class |
+| RSF baseline comparison (N=2-20) | RSF plateaus at AUC ~0.82 for N≥3; XGBoost reaches 0.99 — multi-horizon classification outperforms per-cycle survival modeling |
 | Power to detect AUC > 0.95 (synthetic) | ≥0.99 at N ≥ 8 |
 | Seed sensitivity (N=8, 10 seeds) | 0.9736 ± 0.0010 (range [0.9714, 0.9750]) |
 | Synthetic vs real distribution | KS D=0.33 (p<0.001), per-feature KL 0.06–0.78 nats |
