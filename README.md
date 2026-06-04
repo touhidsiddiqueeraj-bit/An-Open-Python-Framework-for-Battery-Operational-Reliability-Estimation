@@ -1,6 +1,7 @@
 # An Open Python Framework for Battery Operational Reliability Estimation
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20532600.svg)](https://doi.org/10.5281/zenodo.20532600)
 
 Open-source Python implementation of the Shikdar–Laaksonen (2026) multihorizon hazard framework for battery operational reliability, with reproducibility analysis, methodological corrections, and an exploratory synthetic scaling study.
 

@@ -32,7 +32,7 @@ This paper builds directly on the multihorizon discrete-time hazard framework in
 
 **Bugs found and fixed:** All three bugs documented in §6 were identified in our own re-implementation. They are not errors in the original authors' published code or paper. The original authors' conceptual framework — multihorizon hazard modeling for battery operational reliability — remains valid and is the foundation of this work. A detailed contribution statement is provided in CONTRIBUTION.md in the repository.
 
-All code, data, and results are publicly available at https://github.com/teamdynamic/battery-reliability-extension (DOI: 10.5281/zenodo.20532600).
+All code, data, and results are publicly available at https://github.com/touhidsiddiqueeraj-bit/An-Open-Python-Framework-for-Battery-Operational-Reliability-Estimation (DOI: 10.5281/zenodo.20532600).
 
 ---
 
@@ -48,7 +48,7 @@ The relationship between training data volume and model performance is well stud
 
 ### 2.3 Reproducibility in Battery Prognostics
 
-Reproducibility challenges in battery ML have been highlighted by multiple authors [8, 9]. Ibraheem et al. [10] noted that variations in cross-validation strategy and failure definition can produce AUC differences exceeding 0.10 on the same dataset. Severson et al. [11] established the importance of standardized data processing for cycle-life prediction. Our work contributes to this stream by documenting three specific methodological pitfalls and their quantitative impact.
+Reproducibility challenges in battery ML have been highlighted by Ibraheem et al. [8], who noted that variations in cross-validation strategy and failure definition can produce AUC differences exceeding 0.10 on the same dataset. Severson et al. [11] established the importance of standardized data processing for cycle-life prediction. Our work contributes to this stream by documenting three specific methodological pitfalls and their quantitative impact.
 
 **Feature comparison with existing frameworks:**
 
@@ -252,7 +252,7 @@ The DeLong comparisons between adjacent N values are not significant (p > 0.05 f
 | 12      | 0.9869 ± 0.0010  | 0.7969 ± 0.0173 |
 | 20      | 0.9917 ± 0.0010  | 0.7944 ± 0.0147 |
 
-RSF matches XGBoost only at N=2 (0.8475 vs. 0.8444). For N ≥ 3, RSF plateaus at AUC ≈ 0.82 and never exceeds 0.85, while XGBoost continues to improve monotonically. This gap is not due to RSF failure per se — per-cycle RSF with time-to-EOL encoding is a reasonable baseline — but rather reflects the advantage of direct multi-horizon classification over survival function extraction: XGBoost simultaneously optimizes discrimination at all four horizons, whereas RSF predicts a single survival function from which horizon-specific risks are derived post hoc. On clean synthetic data where failure events produce sharp, separable feature signatures, the multi-output gradient-boosted approach extracts substantially more information. On NASA 4-cell real data, RSF also yields AUC ~0.50 with all horizons either NaN (single-class test folds) or at the class prior, confirming that the data insufficiency limitation is dataset-level rather than model-specific.
+RSF matches XGBoost only at N=2 (0.8475 vs. 0.8444). For N ≥ 3, RSF plateaus at AUC ≈ 0.82 and never exceeds 0.85, while XGBoost continues to improve monotonically. This gap is not due to RSF failure per se — per-cycle RSF with time-to-EOL encoding is a reasonable baseline — but rather reflects the advantage of direct multi-horizon classification over survival function extraction: XGBoost simultaneously optimizes discrimination at all four horizons, whereas RSF predicts a single survival function from which horizon-specific risks are derived post hoc. On clean synthetic data where failure events produce sharp, separable feature signatures, the multi-output gradient-boosted approach extracts substantially more information. On NASA 4-cell real data, RSF also yields AUC ~0.50 with all horizons either NaN (single-class test folds) or at the class prior, confirming that the data insufficiency limitation is dataset-level rather than model-specific. The RSF scaling experiment (20 seeds × 6 N values) required approximately 47 minutes on an Intel i7-9700K @ 3.6 GHz (8-core CPU); runtime will vary with hardware.
 
 **Per-horizon AUC at selected N (seed 1, representative):**
 
@@ -264,7 +264,7 @@ RSF matches XGBoost only at N=2 (0.8475 vs. 0.8444). For N ≥ 3, RSF plateaus a
 
 All horizons improve consistently with N; no single horizon lags systematically.
 
-**Figure 1** (scaling_curve.png) plots AUC vs N with 95% bootstrap confidence intervals and annotated regimes. Colors are selected for readability across common color vision deficiencies (single blue hue `#1b3a5c` for the main curve, with gray and muted tones for annotations).
+**Figure 1** (scaling_curve.png) plots AUC vs N with 95% bootstrap confidence intervals and annotated regimes. Colors are selected for readability across common color vision deficiencies (single blue hue `#1b3a5c` for the main curve, with gray and muted tones for annotations). Per-feature KL divergence between synthetic and real distributions is shown in Supplementary Figure S1[^fig-s1].
 
 **Key findings:**
 
@@ -521,11 +521,13 @@ All source code, configuration files, experimental results, and documentation ar
 
 **Dependencies and reproducibility:** The environment is fully specified (see `environment.yml` and `requirements-exact.txt` in the repository root). A `reproduce.sh` script creates a virtual environment, installs pinned dependencies, and runs the quick experiment (~6 seconds on a 4-core CPU). No GPU, container, or cloud resources are required.
 
-**Version:** All experiments in this paper use commit `f26147a` with global random seed 42 (set in `config.yaml`). The scaling study additionally uses seeds 0–19 per Monte Carlo run, fixed per N value for exact reproducibility.
+**Version:** All experiments in this paper use commit `6df0929` with global random seed 42 (set in `config.yaml`). The scaling study additionally uses seeds 0–19 per Monte Carlo run, fixed per N value for exact reproducibility.
 
-**Data:** The NASA PCoE battery dataset [12] is used for real-data validation. Synthetic data can be generated independently via the included generator (no external downloads needed). CALCE and other public datasets are supported architecturally but are not included due to download restrictions.
+**Data:** The NASA PCoE battery dataset [10] is used for real-data validation. Synthetic data can be generated independently via the included generator (no external downloads needed). CALCE and other public datasets are supported architecturally but are not included due to download restrictions.
 
 **Third-party frameworks:** Our framework is compared against BatteryML [3], PyBaMM [4], and BEEP [5] in §2.1. No proprietary data or human subjects were used in this study.
+
+[^fig-s1]: See `paper/supplementary/figure_s1.png` in the repository (per-feature KL divergence between synthetic generator and NASA real data).
 
 ---
 
@@ -535,7 +537,7 @@ All source code, configuration files, experimental results, and documentation ar
 
 [2] T. A. Shikdar and H. Laaksonen, "Learning When Not to Use a Battery: Multihorizon Failure Intelligence," *International Transactions on Electrical Energy Systems*, vol. 2026, no. 1, p. 6000810, 2026, doi: 10.1155/etep/6000810.
 
-[3] S. Wang, et al., "BatteryML: A Python Library for Battery Machine Learning," *Journal of Open Source Software*, vol. 9, no. 95, p. 6354, 2024, doi: 10.21105/joss.06354.
+[3] H. Zhang, X. Gui, S. Zheng, Z. Lu, Y. Li, and J. Bian, "BatteryML: An Open-Source Platform for Machine Learning on Battery Degradation," *International Conference on Learning Representations (ICLR)*, 2024, arXiv:2310.14714, doi: 10.48550/arXiv.2310.14714.
 
 [4] V. Sulzer, et al., "Python Battery Mathematical Modelling (PyBaMM)," *Journal of Open Source Software*, vol. 6, no. 62, p. 3048, 2021, doi: 10.21105/joss.03048.
 
@@ -545,38 +547,28 @@ All source code, configuration files, experimental results, and documentation ar
 
 [7] J. Cho, et al., "How much data is needed to train a medical image deep learning system to achieve necessary high accuracy?" *arXiv:1511.06348*, 2015.
 
-[8] A. M. Bizeray, et al., "Identifiability and Reproducibility in Battery Modelling," *Journal of the Electrochemical Society*, vol. 167, p. 130513, 2020, doi: 10.1149/1945-7111/abb6f2.
+[8] R. Ibraheem, T. I. Cannings, T. Sell, and G. dos Reis, "Robust Survival Model for the Prediction of Li-ion Battery Lifetime Reliability and Risk Functions," *Energy and AI*, vol. 19, p. 100465, 2025, doi: 10.1016/j.egyai.2024.100465.
 
-[9] R. R. Richardson, et al., "On the reproducibility of data-driven battery ageing prediction," *Energy & AI*, vol. 15, p. 100315, 2024, doi: 10.1016/j.egyai.2023.100315.
+[9] K. A. Severson, P. M. Attia, N. Jin, et al., "Data-Driven Prediction of Battery Cycle Life Before Capacity Degradation," *Nature Energy*, vol. 4, no. 5, pp. 383--391, 2019, doi: 10.1038/s41560-019-0356-8.
 
-[10] R. Ibraheem, T. I. Cannings, T. Sell, and G. dos Reis, "Robust Survival Model for the Prediction of Li-ion Battery Lifetime Reliability and Risk Functions," *Energy and AI*, vol. 19, p. 100465, 2025, doi: 10.1016/j.egyai.2024.100465.
+[10] B. Saha and K. Goebel, "Battery Data Set," NASA Ames Prognostics Data Repository, 2007. [Online]. Available: https://ti.arc.nasa.gov/tech/dash/groups/pcoe/prognostic-data-repository/battery/
 
-[11] K. A. Severson, P. M. Attia, N. Jin, et al., "Data-Driven Prediction of Battery Cycle Life Before Capacity Degradation," *Nature Energy*, vol. 4, no. 5, pp. 383--391, 2019, doi: 10.1038/s41560-019-0356-8.
+[11] E. R. DeLong, D. M. DeLong, and D. L. Clarke-Pearson, "Comparing the Areas under Two or More Correlated Receiver Operating Characteristic Curves: A Nonparametric Approach," *Biometrics*, vol. 44, no. 3, pp. 837--845, 1988, doi: 10.2307/2531595.
 
-[12] B. Saha and K. Goebel, "Battery Data Set," NASA Ames Prognostics Data Repository, 2007. [Online]. Available: https://ti.arc.nasa.gov/tech/dash/groups/pcoe/prognostic-data-repository/battery/
+[12] B. Efron and R. J. Tibshirani, *An Introduction to the Bootstrap*, Chapman & Hall, 1993.
 
-[13] E. R. DeLong, D. M. DeLong, and D. L. Clarke-Pearson, "Comparing the Areas under Two or More Correlated Receiver Operating Characteristic Curves: A Nonparametric Approach," *Biometrics*, vol. 44, no. 3, pp. 837--845, 1988, doi: 10.2307/2531595.
+[13] Q. Wang, M. Ye, X. Cai, D. U. Sauer, and W. Li, "Transferable Data-Driven Capacity Estimation for Lithium-Ion Batteries with Deep Learning: A Case Study from Laboratory to Field Applications," *Applied Energy*, vol. 350, p. 121747, 2023, doi: 10.1016/j.apenergy.2023.121747.
 
-[14] B. Efron and R. J. Tibshirani, *An Introduction to the Bootstrap*, Chapman & Hall, 1993.
+[14] M. Li, et al., "State of Health Estimation and Battery Management: A Review of Health Indicators, Models and Machine Learning," *Materials*, vol. 18, no. 1, p. 145, 2025, doi: 10.3390/ma18010145.
 
-[15] Q. Wang, M. Ye, X. Cai, D. U. Sauer, and W. Li, "Transferable Data-Driven Capacity Estimation for Lithium-Ion Batteries with Deep Learning: A Case Study from Laboratory to Field Applications," *Applied Energy*, vol. 350, p. 121747, 2023, doi: 10.1016/j.apenergy.2023.121747.
+[15] A. Dosovitskiy, et al., "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale," *ICLR*, 2021.
 
-[16] M. Li, et al., "State of Health Estimation and Battery Management: A Review of Health Indicators, Models and Machine Learning," *Materials*, vol. 18, no. 1, p. 145, 2025, doi: 10.3390/ma18010145.
+[16] J. Zhu, et al., "Data-driven capacity estimation of commercial lithium-ion batteries from voltage relaxation," *Nature Communications*, vol. 13, p. 2261, 2022, doi: 10.1038/s41467-022-29837-0.
 
-[17] A. Dosovitskiy, et al., "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale," *ICLR*, 2021.
+[17] P. Fermín-Cueto, E. McTurk, M. Allerhand, E. Medina-Lopez, M. F. Anjos, J. Sylvester, and G. dos Reis, "Identification and Machine Learning Prediction of Knee-Point and Knee-Onset in Capacity Degradation Curves of Lithium-Ion Cells," *Energy and AI*, vol. 1, p. 100006, 2020, doi: 10.1016/j.egyai.2020.100006.
 
-[18] Y. Zhang, et al., "A survey on battery state-of-health estimation using machine learning," *Energy Storage*, vol. 4, no. 6, p. e376, 2022, doi: 10.1002/est2.376.
+[18] T. Lombardo, et al., "Artificial Intelligence Applied to Battery Research: Hype or Reality?" *Chemical Reviews*, vol. 122, no. 14, pp. 12373--12410, 2022, doi: 10.1021/acs.chemrev.1c00108.
 
-[19] J. Zhu, et al., "Data-driven capacity estimation of commercial lithium-ion batteries from voltage relaxation," *Nature Communications*, vol. 13, p. 2261, 2022, doi: 10.1038/s41467-022-29837-0.
+[19] M. Aykol, et al., "The quest for an intelligent battery: A perspective on artificial intelligence and machine learning for batteries," *Joule*, vol. 5, no. 11, pp. 2788--2805, 2021, doi: 10.1016/j.joule.2021.09.005.
 
-[20] D. Romo-Rico, et al., "Machine learning for battery systems: A comprehensive review," *Journal of Energy Storage*, vol. 72, p. 108445, 2023, doi: 10.1016/j.est.2023.108445.
-
-[21] A. Fermín-Cueto, et al., "Identification of machine learning for battery lifetime prediction and early retirement," *Energy & Environmental Science*, vol. 13, pp. 3365--3377, 2020, doi: 10.1039/D0EE01890C.
-
-[22] T. Lombardo, et al., "Artificial Intelligence Applied to Battery Research: Hype or Reality?" *Chemical Reviews*, vol. 122, no. 14, pp. 12373--12410, 2022, doi: 10.1021/acs.chemrev.1c00108.
-
-[23] M. Aykol, et al., "The quest for an intelligent battery: A perspective on artificial intelligence and machine learning for batteries," *Joule*, vol. 5, no. 11, pp. 2788--2805, 2021, doi: 10.1016/j.joule.2021.09.005.
-
-[24] G. dos Reis, et al., "Lithium-ion battery degradation: a comprehensive review of data-driven approaches," *Energy and AI*, vol. 12, p. 100245, 2023, doi: 10.1016/j.egyai.2023.100245.
-
-[25] P. Gasper, et al., "Machine learning for battery lifetime prediction: A critical review of methods and metrics," *Cell Reports Physical Science*, vol. 4, no. 6, p. 101389, 2023, doi: 10.1016/j.xcrp.2023.101389.
+[20] G. dos Reis, et al., "Lithium-ion battery degradation: a comprehensive review of data-driven approaches," *Energy and AI*, vol. 12, p. 100245, 2023, doi: 10.1016/j.egyai.2023.100245.
