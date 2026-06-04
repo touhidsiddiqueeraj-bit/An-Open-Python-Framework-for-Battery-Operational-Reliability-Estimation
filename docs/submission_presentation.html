@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>An Open Python Framework for Battery Reliability — Presentation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; }
+  .slide {
+    min-height: 100vh; padding: 60px 80px;
+    display: flex; flex-direction: column; justify-content: center;
+    max-width: 1100px; margin: 0 auto;
+  }
+  h1 { font-size: 2.6em; font-weight: 700; margin-bottom: 0.3em; line-height: 1.2; }
+  h2 { font-size: 1.8em; font-weight: 600; margin-bottom: 0.5em; color: #60a5fa; }
+  h3 { font-size: 1.3em; font-weight: 600; margin-bottom: 0.5em; color: #94a3b8; }
+  p, li { font-size: 1.15em; line-height: 1.6; margin-bottom: 0.5em; }
+  ul { padding-left: 1.5em; }
+  li { margin-bottom: 0.3em; }
+  .highlight { color: #fbbf24; font-weight: 600; }
+  .bad { color: #f87171; }
+  .good { color: #34d399; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0; }
+  .stat { background: #1e293b; padding: 20px; border-radius: 12px; text-align: center; }
+  .stat .num { font-size: 2.2em; font-weight: 700; color: #60a5fa; }
+  .stat .label { font-size: 0.85em; color: #94a3b8; margin-top: 4px; }
+  .table-wrap { overflow-x: auto; margin: 15px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 1em; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #334155; }
+  th { background: #1e293b; color: #60a5fa; font-weight: 600; }
+  tr:hover { background: #1e293b; }
+  .nav { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px; background: #1e293b; padding: 8px 16px;
+    border-radius: 20px; border: 1px solid #334155; z-index: 100; }
+  .nav button { background: none; border: none; color: #94a3b8; font-size: 1.1em;
+    cursor: pointer; padding: 4px 12px; border-radius: 12px; }
+  .nav button:hover { background: #334155; color: #e2e8f0; }
+  .nav span { color: #64748b; line-height: 2em; }
+  .tag { display: inline-block; background: #1e3a5f; color: #60a5fa;
+    padding: 2px 10px; border-radius: 10px; font-size: 0.8em; margin-right: 6px; }
+  .footer { margin-top: auto; color: #475569; font-size: 0.85em; text-align: center; padding-top: 20px; }
+  @media (max-width: 768px) {
+    .slide { padding: 30px 20px; }
+    h1 { font-size: 1.8em; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <button onclick="changeSlide(-1)">&#8592;</button>
+  <span id="slideCount"></span>
+  <button onclick="changeSlide(1)">&#8594;</button>
+</div>
+
+<!-- SLIDE 1: Title -->
+<div class="slide" data-slide="0">
+   <h1>An Open Python Framework for Battery Operational Reliability Estimation</h1>
+  <p style="font-size:1.3em; color:#94a3b8; margin-bottom:1em;">With an Exploratory Synthetic Scaling Study</p>
+  <p style="margin-bottom:2em;"><span class="tag">Open Source</span><span class="tag">Battery ML</span><span class="tag">Scaling Study</span></p>
+  <div class="grid2">
+    <div class="stat">
+      <div class="num">2–20</div>
+      <div class="label">Synthetic cells studied</div>
+    </div>
+    <div class="stat">
+      <div class="num">0.97</div>
+      <div class="label">AUC at N=8 cells</div>
+    </div>
+    <div class="stat">
+      <div class="num">0.50</div>
+      <div class="label">Real-data AUC (NASA, per-fold)</div>
+    </div>
+    <div class="stat">
+      <div class="num">3</div>
+      <div class="label">Code bugs corrected</div>
+    </div>
+  </div>
+  <div class="footer">Team Dynamic &bull; June 2026</div>
+</div>
+
+<!-- SLIDE 2: The Problem -->
+<div class="slide" data-slide="1">
+  <h2>Why this matters</h2>
+  <p>Grid batteries are asked: <strong>"Can you safely deliver power for the next N hours?"</strong></p>
+  <ul>
+    <li>Say <span class="good">yes</span> when the battery is healthy → earn revenue</li>
+    <li>Say <span class="bad">yes</span> when it's about to fail → blackout, penalty costs</li>
+    <li>Say <span class="bad">no</span> when it would have been fine → lost revenue</li>
+  </ul>
+  <p style="margin-top:1.5em;">Shikdar &amp; Laaksonen (2026) built a <strong>machine learning framework</strong> to predict failure probability across multiple horizons (10&ndash;50 cycles). They reported:</p>
+  <ul>
+    <li><span class="highlight">AUC = 0.944</span> on <strong>37 batteries</strong></li>
+    <li>Failure rate reduction: <strong>10.3% &rarr; 2.95%</strong></li>
+  </ul>
+  <p style="margin-top:1em; color:#94a3b8;">Can we reproduce this with the public NASA dataset that most researchers use?</p>
+</div>
+
+<!-- SLIDE 3: What We Did -->
+<div class="slide" data-slide="2">
+  <h2>Our Reproducibility Pipeline</h2>
+  <p>We implemented the entire framework as a modular Python package:</p>
+  <ul>
+    <li><strong>Data layer:</strong> <code>NASALoader</code> parses .mat files, normalizes features (SOH, voltage, current, temperature)</li>
+    <li><strong>Model layer:</strong> XGBoost with per-horizon multi-output classification, isotonic calibration on validation fold</li>
+    <li><strong>Dispatch layer:</strong> Threshold policies, derating, Monte Carlo market simulator</li>
+    <li><strong>Evaluation:</strong> Leave-one-battery-out CV, AUC/Brier/ECE metrics, per-fold reporting</li>
+  </ul>
+  <p style="margin-top:1em;">Single command: <code style="background:#1e293b; padding:2px 8px; border-radius:4px;">python run_all.py --quick</code> — completes in &lt; 10 seconds</p>
+</div>
+
+<!-- SLIDE 4: The Data -->
+<div class="slide" data-slide="3">
+  <h2>The NASA 4-Cell Dataset</h2>
+  <div class="grid2">
+    <div>
+      <div class="stat"><div class="num">B0005</div><div class="label">168 cycles, SOH=0.699</div></div>
+      <div class="stat"><div class="num">B0006</div><div class="label">168 cycles, SOH=0.572</div></div>
+      <div class="stat"><div class="num">B0007</div><div class="label">168 cycles, SOH=0.744</div></div>
+      <div class="stat"><div class="num">B0018</div><div class="label">132 cycles, SOH=0.729</div></div>
+    </div>
+    <div>
+      <p style="font-weight:600;">Key limitation:</p>
+      <p>Only <span class="highlight">64 cycles</span> fall below the EOL threshold (SOH &lt; 0.70).</p>
+      <p>Of those, <span class="highlight">62 come from a single cell</span> (B0006).</p>
+      <p>Across all 4 cells, only <strong>~2 EOL events</strong> exist within any horizon. Leave-battery-out CV trains on 3 cells, tests on 1. With only 1 failing cell, most folds see zero or one class.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: Main Results -->
+<div class="slide" data-slide="4">
+  <h2>Results: The Framework Needs More Data</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Horizon</th><th>Raw AUC</th><th>Calibrated AUC</th><th>Per-fold macro AUC</th></tr>
+    <tr><td>H=10</td><td>0.26</td><td class="bad">0.50</td><td class="bad">NaN (2/4 folds single-class)</td></tr>
+    <tr><td>H=20</td><td>0.26</td><td class="bad">0.50</td><td class="bad">NaN (2/4 folds single-class)</td></tr>
+    <tr><td>H=30</td><td>0.60</td><td class="bad">0.50</td><td class="bad">0.50</td></tr>
+    <tr><td>H=50</td><td>0.69</td><td class="bad">0.50</td><td class="bad">0.50</td></tr>
+    <tr style="font-weight:600;"><td>Macro avg</td><td>0.46</td><td class="bad">0.50</td><td class="bad">0.50 (exactly random)</td></tr>
+  </table>
+  </div>
+  <p style="margin-top:0.8em;"><span class="bad">AUC = 0.50 is exactly random.</span> The model produces near-constant predictions across cycles because only ~2 failure events exist across training cells. Calibration preserves rank order — constant input → constant output → AUC 0.50.</p>
+  <p style="margin-top:0.5em;">A synthetic-to-real <strong>transfer test</strong> (train N=20 synthetic, test NASA) yields AUC <span class="highlight">0.88</span> (95% CI: [0.860, 0.900]), indicating the synthetic generator captures real-world structure. <strong>This does NOT validate real-data training</strong> — it is a distributional similarity check.</p>
+</div>
+
+<!-- SLIDE 6: Scaling Study (the money plot) -->
+<div class="slide" data-slide="5">
+  <h2>Synthetic Scaling Study: AUC vs Dataset Size</h2>
+  <p style="margin-bottom:0.8em;">For N &isin; {2, 3, 5, 8, 12, 20} with 20 Monte Carlo seeds each:</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>N cells</th><th>Mean AUC</th><th>&plusmn;1 Std</th><th>Regime (synthetic only)</th></tr>
+    <tr><td>2</td><td>0.84</td><td>0.009</td><td class="bad">Low N</td></tr>
+    <tr><td>3</td><td>0.89</td><td>0.012</td><td class="bad">Low N</td></tr>
+    <tr><td>5</td><td>0.94</td><td>0.009</td><td class="bad">Low N</td></tr>
+    <tr><td>8</td><td>0.97</td><td>0.002</td><td class="good">Moderate N</td></tr>
+    <tr><td>12</td><td>0.98</td><td>0.001</td><td class="good">Moderate N</td></tr>
+    <tr><td>20</td><td>0.99</td><td>0.001</td><td class="good">Moderate N (no plateau)</td></tr>
+  </table>
+  </div>
+  <p style="margin-top:0.8em;">Curve continues to improve — <span class="highlight">no plateau observed within N=2-20</span>. These are <strong>optimistic bounds</strong> on synthetic data, not validated real-data requirements.</p>
+  <p style="font-size:0.95em;"><span class="highlight">Per-horizon breakdown (representative seed):</span></p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>N cells</th><th>H=10</th><th>H=20</th><th>H=30</th><th>H=50</th><th>Macro</th></tr>
+    <tr><td>3</td><td>0.88</td><td>0.89</td><td>0.91</td><td>0.92</td><td>0.90</td></tr>
+    <tr><td>8</td><td>0.96</td><td>0.97</td><td>0.97</td><td>0.98</td><td>0.97</td></tr>
+    <tr><td>20</td><td>0.99</td><td>0.99</td><td>0.99</td><td>0.99</td><td>0.99</td></tr>
+  </table>
+  </div>
+  <p style="margin-top:0.5em; font-size:0.95em;">All horizons improve consistently with N.</p>
+  <div style="background:#1e293b; padding:15px; border-radius:12px; margin-top:10px; border-left:4px solid #fbbf24;">
+  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Key finding: event count, not cell count</strong> With N=12 fixed, AUC drops from 0.91 (200 events) to 0.64 (100 events) to 0.10 (2 events).</p>
+  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Diversity caveat:</strong> Synthetic data maximizes cell diversity at every N. Real batteries share conditions — correlated degradation reduces effective diversity.</p>
+  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; Censoring intolerance:</strong> Both XGBoost and RSF fail above 20% censoring — confirmed by Uno's cumulative/dynamic AUC (per-horizon, not just macro). Degradation is genuine signal loss, not metric bias.</p>
+  <p style="font-size:0.9em;"><strong style="color:#fbbf24;">&darr; RSF baseline added:</strong> A per-cycle RSF (single model per fold, 1−S(H) horizon risk) plateaus at AUC ~0.82 for N≥3, vs XGBoost 0.99. Multi-horizon XGBoost extracts more information from clean synthetic features.</p>
+  </div>
+</div>
+
+<!-- SLIDE 7: Three Methodological Corrections -->
+<div class="slide" data-slide="6">
+  <h2>Three Hidden Bugs We Found</h2>
+  <div style="background:#1e293b; padding:20px; border-radius:12px; margin:15px 0; border-left:4px solid #f87171;">
+    <h3 style="color:#f87171;">Bug 1: Calibration Data Leakage</h3>
+    <p>Fitting the isotonic calibrator on <strong>test data</strong> inflated AUC from an honest 0.50 to an apparent 0.74. Fix: fit on a held-out validation fold. Demonstrated on working model: +0.016 inflation persists even at high AUC.</p>
+  </div>
+  <div style="background:#1e293b; padding:20px; border-radius:12px; margin:15px 0; border-left:4px solid #f87171;">
+    <h3 style="color:#f87171;">Bug 2: Energy Unit Confusion</h3>
+    <p>Revenue = energy (kWh) &times; price ($/MWh) — without dividing by 1000, revenue was overstated by <strong>1000&times;</strong> ($3,780 vs $3.78 per battery across test period).</p>
+  </div>
+  <div style="background:#1e293b; padding:20px; border-radius:12px; margin:15px 0; border-left:4px solid #f87171;">
+    <h3 style="color:#f87171;">Bug 3: Inconsistent Baseline Metric</h3>
+    <p>Baseline failure rate used label density across all horizons; model rows used conditional dispatch-based metric. Incomparable. Corrected to same conditional metric.</p>
+  </div>
+</div>
+
+<!-- SLIDE 8: Ablation -->
+<div class="slide" data-slide="7">
+  <h2>Ablation Study</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Configuration</th><th>Failure Rate</th><th>Energy</th></tr>
+    <tr><td>Always dispatch</td><td>0.0063</td><td>318.0</td></tr>
+    <tr><td>+ Raw hazard model</td><td>0.0063</td><td>318.0</td></tr>
+    <tr><td>+ Probability calibration</td><td>0.0063</td><td>318.0</td></tr>
+    <tr><td>+ Composite failure labels</td><td class="bad">0.0110</td><td>318.0</td></tr>
+  </table>
+  </div>
+  <p style="margin-top:1em;">All configurations produce identical outcomes because the model probabilities lack contrast — only 64 cycles (all from B0006) fall below the SOH threshold. The 4-cell dataset cannot differentiate dispatch policies.</p>
+</div>
+
+<!-- SLIDE 9: What It Means -->
+<div class="slide" data-slide="8">
+  <h2>Takeaways</h2>
+  <div style="background:#1e3a5f; border-radius:12px; padding:25px; margin:15px 0;">
+    <h3 style="color:#60a5fa;">Exploratory scaling curve (synthetic, optimistic bound)</h3>
+    <p>AUC vs N curve: N &le; 5 = low (AUC &lt; 0.95), N = 8-12 = moderate (AUC 0.97-0.98), N &ge; 12 = high (AUC &gt; 0.98, no plateau). Key insight: <strong>≥200 failure events</strong> drive discrimination, not cell count alone. Real-data requirements are unknown.</p>
+  </div>
+  <div style="background:#1e3a5f; border-radius:12px; padding:25px; margin:15px 0;">
+    <h3 style="color:#60a5fa;">Open-source framework with honest reporting</h3>
+    <p>Three bugs documented and fixed: calibration leakage (inflated AUC 0.50→0.74), energy unit error (1000&times;), inconsistent baselines. On NASA 4-cell: per-fold AUC = 0.50 (exactly random). All code is public.</p>
+  </div>
+  <div style="background:#1e3a5f; border-radius:12px; padding:25px; margin:15px 0;">
+    <h3 style="color:#60a5fa;">Clear limitations stated</h3>
+    <p>RSF baseline added (plateaus at AUC ~0.82). No Cox/Weibull comparisons. No real-data validation beyond 4 cells. Censoring intolerant above 20% (confirmed by Uno AUC). Synthetic-to-real gap (KS D=0.33). Transfer test does not validate real deployment.</p>
+  </div>
+</div>
+
+<!-- SLIDE 10: Software -->
+<div class="slide" data-slide="9">
+  <h2>Our Contribution: A Reproducible Python Package</h2>
+  <ul>
+    <li><strong>Modular</strong> — data, models, dispatch, evaluation layers</li>
+    <li><strong>Correct calibration</strong> — fit on validation fold, not test set</li>
+    <li><strong>Unit-aware economics</strong> — correct kWh &harr; $/MWh conversion</li>
+    <li><strong>Consistent metrics</strong> — same dispatch-based metric for all ablation rows</li>
+    <li><strong>Synthetic data fallback</strong> — pipeline runs without external files</li>
+    <li><strong>Scaling experiment</strong> — <code>--expt scaling</code> runs N=2..20 Monte Carlo study (20 seeds)</li>
+    <li><strong>Negative controls</strong> — label shuffling (AUC 0.53) and random data (AUC ~0.50)</li>
+    <li><strong>Full configuration</strong> — single <code>config.yaml</code> controls everything</li>
+  </ul>
+  <p style="margin-top:1.5em;">Code: <code style="background:#1e293b; padding:4px 10px; border-radius:4px;">https://github.com/touhidsiddiqueeraj-bit/An-Open-Python-Framework-for-Battery-Operational-Reliability-Estimation</code></p>
+  <p>DOI: <code style="background:#1e293b; padding:4px 10px; border-radius:4px;">10.5281/zenodo.20532600</code></p>
+</div>
+
+<!-- SLIDE 11: Limitations & Future Work -->
+<div class="slide" data-slide="10">
+  <h2>Limitations &amp; Future Work</h2>
+  <h3>Current limitations</h3>
+  <ul>
+    <li>NASA validation limited to 4 cells (all 18,650 format, lab conditions)</li>
+    <li>RSF baseline added: plateaus at AUC ~0.82 for N≥3 (vs XGBoost 0.99)</li>
+    <li>Censoring intolerant above 20% (confirmed by Uno AUC per horizon)</li>
+    <li>No Cox/Weibull comparisons</li>
+    <li>No deep learning (LSTM, TCN, Transformer) — CPU-only constraints</li>
+    <li>Synthetic distribution differs from real (KS D=0.33, p<0.001)</li>
+    <li>Transfer test: distributional similarity check, NOT real-data validation</li>
+  </ul>
+  <h3 style="margin-top:1em;">Future work</h3>
+  <ul>
+    <li>Validate scaling curve on real multi-cell datasets (15+ cells)</li>
+    <li>Add extended baseline benchmarks (Cox PH, Weibull AFT)</li>
+    <li>Add cross-chemistry validation (LFP, NMC chemistries)</li>
+    <li>GPU-based deep learning comparisons</li>
+    <li>Real price data instead of AR(1) simulation</li>
+  </ul>
+</div>
+
+<!-- SLIDE 12: Thank You -->
+<div class="slide" data-slide="11" style="text-align:center;">
+  <h1 style="margin-bottom:0.5em;">Thank You</h1>
+  <p style="font-size:1.3em; color:#94a3b8;">Questions? Feedback?</p>
+  <p style="margin-top:2em;">Paper: <code style="background:#1e293b; padding:4px 10px; border-radius:4px;">Extension_Paper.docx</code></p>
+  <p>Code: <code style="background:#1e293b; padding:4px 10px; border-radius:4px;">github.com/touhidsiddiqueeraj-bit/An-Open-Python-Framework-for-Battery-Operational-Reliability-Estimation</code></p>
+  <p style="margin-top:2em; color:#64748b; font-size:0.9em;">Team Dynamic &bull; June 2026</p>
+</div>
+
+<script>
+let currentSlide = 0;
+const slides = document.querySelectorAll('.slide');
+function showSlide(n) {
+  slides.forEach((s, i) => {
+    s.style.display = i === n ? 'flex' : 'none';
+  });
+  document.getElementById('slideCount').textContent = (n+1) + '/' + slides.length;
+}
+function changeSlide(d) {
+  currentSlide = Math.max(0, Math.min(slides.length-1, currentSlide + d));
+  showSlide(currentSlide);
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+    e.preventDefault(); changeSlide(1);
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault(); changeSlide(-1);
+  }
+});
+showSlide(0);
+</script>
+</body>
+</html>

@@ -17,6 +17,7 @@ Open-source Python implementation of the Shikdar–Laaksonen (2026) multihorizon
 | Transfer test (train synthetic N=20 → test NASA) | Macro AUC **0.88** (95% CI: [0.860, 0.900]) — distributional overlap, NOT validation of real-data training |
 | Direct real-data training (NASA 4-cell) | AUC **0.50** — dataset too small for this method |
 | Calibration leakage (our re-implementation bug) | +0.016–0.28 inflation; corrected AUC dropped from 0.74 to 0.50 |
+| Stacked AUC (NASA, concatenated test folds) | Macro 0.45 (95% CI [0.24, 0.77]); per-horizon 0.26–0.71 — below-random due to between-cell ranking confound |
 | Energy unit error | 1000× revenue overstatement (corrected in §6.2) |
 | Negative control (shuffled labels) | AUC **0.53** — model does not find spurious patterns |
 | Censoring sensitivity | 10% censoring → AUC drops 0.98→0.92; ≥20% → all horizons single-class |
