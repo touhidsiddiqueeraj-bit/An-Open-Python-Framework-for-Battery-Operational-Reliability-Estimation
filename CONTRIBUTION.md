@@ -14,6 +14,7 @@ The core framework — hazard modeling via per-horizon XGBoost classifiers, isot
 | §5.1 | Real-data case study on NASA 4-cell dataset identifying data insufficiency and demonstrating synthetic-to-real transfer |
 | §5.2 | Monte Carlo scaling study (20 seeds, N=2–20) providing exploratory synthetic scaling analysis with bootstrap CIs, establishing event count (≥200) rather than cell count as the key driver of discrimination |
 | §5.2 | Random Survival Forest (RSF) baseline comparison showing XGBoost substantially outperforms per-cycle survival modeling (RSF plateaus at AUC ~0.82 for N≥3, vs XGBoost 0.99) |
+| §5.2 | Weibull Accelerated Failure Time (AFT) cell-level baseline confirming fundamental resolution limitation: Weibull AFT achieves AUC 0.700 at N=20 vs XGBoost 0.997, because survival functions are defined at only N distinct time points |
 | §5.2.3 | Censoring-robust evaluation via Uno's cumulative/dynamic AUC (per-horizon) confirming that degradation reflects genuine signal loss, not metric bias |
 | §5.2.1 | SOH threshold sensitivity analysis |
 | §6 | Identification and correction of three methodological pitfalls: calibration data leakage, energy unit error, inconsistent baselines |

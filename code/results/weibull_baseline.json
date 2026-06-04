@@ -1,0 +1,23 @@
+{
+  "xgb": {
+    "N=8": {
+      "mean": 0.9948,
+      "std": 0.0021
+    },
+    "N=20": {
+      "mean": 0.997,
+      "std": 0.0011
+    }
+  },
+  "weibull": {
+    "N=8": {
+      "mean": 0.5751,
+      "std": 0.0139
+    },
+    "N=20": {
+      "mean": 0.7,
+      "std": 0.0144
+    }
+  },
+  "interpretation": "XGBoost discrete-time hazard outperforms Weibull AFT across all N values on synthetic data."
+}
