@@ -18,7 +18,7 @@ This paper makes three contributions:
 
 1. **A reproducibility study with quantitative scaling guidelines** for the Shikdar–Laaksonen framework. We implement the complete pipeline and perform a controlled Monte Carlo scaling study (20 seeds per N, bootstrap confidence intervals) that establishes the relationship between dataset size and model discrimination.
 
-2. **A quantitative scaling curve** showing that AUC improves rapidly from N=2 to N=8 and continues to improve beyond N=12, with no clear plateau observed up to N=20 (AUC 0.99). Statistical significance (DeLong test) confirms that adjacent N values produce meaningfully different AUCs. We validate the curve's robustness to SOH threshold choice, censoring rate, and provide bootstrap CIs.
+2. **A quantitative scaling curve** showing that AUC improves rapidly from N=2 to N=8 and continues to improve beyond N=12, with no clear plateau observed up to N=20 (AUC 0.99). The strong monotonic improvement and narrowing bootstrap CIs confirm the trend is consistent across seeds. We validate the curve's robustness to SOH threshold choice, censoring rate, and provide bootstrap CIs.
 
 3. **Documentation of three methodological pitfalls** encountered during implementation — calibration data leakage, energy unit errors, and inconsistent ablation baselines — each demonstrated with quantitative impact on a working model.
 
@@ -135,7 +135,7 @@ Cell-specific parameters are scaled across the population to ensure diversity at
 - **EOL point:** $\text{EOL}_i = 80 + 140 \cdot \frac{i}{N-1}$ cycles, ensuring EOL events are spread across the cycle range
 - **Initial capacity:** $C_0 = 2.0 \pm 0.1$ Ah, sampled uniformly per cell
 
-This scaling ensures that small datasets (N=2) still contain diverse trajectories, while larger datasets add progressively more extreme examples. This design choice maximizes cell diversity at every dataset size, which means the resulting scaling curve is an optimistic upper bound — real-world datasets with correlated degradation (same chemistry, manufacturer, operating conditions) will require more cells to achieve equivalent AUC. The chosen piecewise linear-to-quadratic fade model (§4.1) follows the battery degradation modeling literature [16, 24] but is not validated against specific chemistries beyond the NASA dataset.
+This scaling ensures that small datasets (N=2) still contain diverse trajectories, while larger datasets add progressively more extreme examples. This design choice maximizes cell diversity at every dataset size, which means the resulting scaling curve is an optimistic upper bound — real-world datasets with correlated degradation (same chemistry, manufacturer, operating conditions) will require more cells to achieve equivalent AUC. The chosen piecewise linear-to-quadratic fade model (§4.1) follows the battery degradation modeling literature [16, 19] but is not validated against specific chemistries beyond the NASA dataset.
 
 ### 4.3 Quantitative Comparison with Real Data
 
@@ -226,7 +226,7 @@ To explore the relationship between dataset size and model discrimination on syn
 - Record macro-averaged AUC
 - Repeat with 20 Monte Carlo seeds per N
 - Compute 95% bootstrap confidence intervals (percentile, 10,000 resamples)
-- DeLong significance tests between adjacent N values
+- Seed-level variance reported per N (20 seeds)
 
 **Results (Table 1):**
 
@@ -343,7 +343,7 @@ To quantify operational outcomes, we run the dispatch framework on the NASA 4-ce
 
 The corrected revenue of \$3.78 reflects the small absolute energy volume from a 4-cell dataset. At this scale, revenue from reliability-aware dispatch is negligible (≈\$0.025/cell/cycle); the economic value proposition requires substantially larger BESS installations (≥100 cells) to generate meaningful returns from operational optimization. The original energy unit error would have overstated revenue by three orders of magnitude, qualitatively changing any economic analysis. On larger datasets where the model produces useful discrimination, the corrected revenue would still be proportionally smaller than uncorrected estimates. The \$3.78 vs \$3,780 discrepancy would also distort policy ranking: a threshold policy that appears to spend negligible additional revenue on energy (relative to always-dispatch) under the corrected metric could appear to waste thousands of dollars under the uncorrected one, leading to qualitatively different operational recommendations.
 
-**Computational cost:** The full synthetic scaling study (N = 2, 3, 5, 8, 12, 20; 20 Monte Carlo seeds; bootstrap CIs; DeLong tests) requires approximately 4–5 hours on a modern 8-core CPU. The per-run cost at N=20 is:
+**Computational cost:** The full synthetic scaling study (N = 2, 3, 5, 8, 12, 20; 20 Monte Carlo seeds; bootstrap CIs) requires approximately 4–5 hours on a modern 8-core CPU. The per-run cost at N=20 is:
 
 | Metric | Value |
 |--------|-------|
@@ -430,7 +430,7 @@ The improvement magnitude expressed in percentage points is inflated 3× under t
 | Energy unit error | Revenue \$3,780 | Revenue \$3.78 | 1000× overstatement; qualitatively different economic viability assessment |
 | Inconsistent ablation baseline | 10.3% → 2.95% failure reduction (7.35 pp) | 0.63% → 2.95% failure reduction (2.32 pp) | 3× percentage-point inflation; baseline already near-optimal |
 
-The three corrections together render the original published results [2] on the NASA 4-cell dataset unsupported. None of these findings affect the framework's theoretical contribution — the multihorizon hazard formulation remains valid. They affect only the quantitative results reported in the original experimental section for the NASA 4-cell case study. Users of the framework should apply the corrected methods documented above.
+The three corrections show that our initial re-implementation produced results inconsistent with the corrected evaluation on the NASA 4-cell dataset. The original authors' published findings are unaffected by these corrections. Users of the framework should apply the corrected methods documented above.
 
 ---
 
