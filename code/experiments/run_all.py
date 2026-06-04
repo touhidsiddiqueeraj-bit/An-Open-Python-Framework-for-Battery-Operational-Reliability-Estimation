@@ -548,7 +548,7 @@ def exp_scaling(cfg):
     log("EXPERIMENT: Synthetic Scaling Study")
     log("=" * 50)
 
-    n_values = [2, 3, 5, 8, 12, 20]
+    n_values = [2, 3, 5, 8, 12, 20, 30, 50]
     n_seeds = 20
     horizons = cfg["horizons"]
     feature_cols = cfg["features"]["input_cols"] + cfg["features"]["derived_cols"]

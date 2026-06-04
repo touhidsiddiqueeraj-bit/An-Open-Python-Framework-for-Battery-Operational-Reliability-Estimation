@@ -1,6 +1,7 @@
 # An Open Python Framework for Battery Operational Reliability Estimation
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20532600.svg)](https://doi.org/10.5281/zenodo.20532600)
 
 Open-source Python implementation of the Shikdar–Laaksonen (2026) multihorizon hazard framework for battery operational reliability, with reproducibility analysis, methodological corrections, and an exploratory synthetic scaling study.
 
@@ -10,7 +11,7 @@ Open-source Python implementation of the Shikdar–Laaksonen (2026) multihorizon
 |----------|--------|
 | AUC on NASA 4-cell (per-fold, valid metric) | **0.50** (exactly random — only 2 EOL events across 3 training cells) |
 | Exploratory synthetic scaling: N for AUC > 0.95 | 5–8 cells (synthetic only; not validated on real data) |
-| Exploratory synthetic scaling: N for AUC > 0.98 | 12–20 cells (curve continues to improve, no plateau within N=2-20) |
+| Exploratory synthetic scaling: N for AUC > 0.98 | 12–20 cells (plateaus near N=20 at AUC 0.99) |
 | Min. failure events for meaningful AUC (synthetic) | ≥200 events across dataset (at N=12, AUC=0.91; at 100 events, drops to 0.64) |
 | Real-data N requirement | Unknown — validated guidelines require ≥15 cells real-data scaling study |
 | Transfer test (train synthetic N=20 → test NASA) | Macro AUC **0.88** (95% CI: [0.860, 0.900]) — distributional overlap, NOT validation of real-data training |
@@ -25,7 +26,7 @@ Open-source Python implementation of the Shikdar–Laaksonen (2026) multihorizon
 | Seed sensitivity (N=8, 10 seeds) | 0.9736 ± 0.0010 (range [0.9714, 0.9750]) |
 | Synthetic vs real distribution | KS D=0.33 (p<0.001), per-feature KL 0.06–0.78 nats |
 
-**Exploratory scaling curve (synthetic data only):** AUC rises from 0.84 (N=2) → 0.94 (N=5) → 0.97 (N=8) → 0.99 (N=20), with no plateau observed within N=2-20. A constrained fit (a ≤ 1.0) hits the boundary, confirming insufficient curvature to estimate a plateau. **These results are specific to the synthetic generator and do not transfer quantitatively to real datasets.**
+**Exploratory scaling curve (synthetic data only):** AUC rises from 0.84 (N=2) → 0.94 (N=5) → 0.97 (N=8) → 0.99 (N=20) and plateaus at 0.99 (N=50), confirming the XGBoost model saturates on this synthetic task near N=20. **These results are specific to the synthetic generator and do not transfer quantitatively to real datasets.**
 
 ## Quick Start
 
